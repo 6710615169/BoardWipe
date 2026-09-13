@@ -74,4 +74,4 @@ def profile_settings_view(request):
 def profile_placeholder_view(request):
     # Temporary placeholder so 'profile' url works.
     # Your friend's Profile app should replace/override this view.
-    return render(request, 'accounts/profile.html')
+    return render(request, 'accounts/profile_setting.html') 

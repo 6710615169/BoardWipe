@@ -32,10 +32,7 @@
     <nav>
         {% if user.is_authenticated %}
             Signed in as <strong>{{ user.username }}</strong> |
-            <a href="{% url 'accounts:profile' %}">My Profile</a> |
-            <a href="{% url 'accounts:logout' %}">Log out</a>
-        {% else %}
-            <a href="{% url 'accounts:login' %}">Log in</a>
+            <a href="{% url 'accounts:profile' %}">My Profile</a>
         {% endif %}
     </nav>
 

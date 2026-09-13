@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
+    email = models.EmailField(unique=True, blank=True)
     """Custom user with extra profile fields for the boardgame community."""
 
     GENRE_CHOICES = [
@@ -37,6 +38,7 @@ class User(AbstractUser):
         help_text="Comma-separated list of boardgames you know how to play, e.g. 'Catan, Chess, Codenames'.",
     )
     bio = models.TextField(
+        # Django enforces max_length only in form/model validation, not at the database level.
         max_length=500,
         blank=True,
         help_text="A short description about yourself.",
@@ -44,7 +46,6 @@ class User(AbstractUser):
     profile_picture = models.ImageField(
         upload_to='profile_pictures/',
         blank=True,
-        null=True,
         help_text="Upload a profile picture for your account.",
     )
 

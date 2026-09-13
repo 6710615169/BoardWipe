@@ -41,6 +41,12 @@ class User(AbstractUser):
         blank=True,
         help_text="A short description about yourself.",
     )
+    profile_picture = models.ImageField(
+        upload_to='profile_pictures/',
+        blank=True,
+        null=True,
+        help_text="Upload a profile picture for your account.",
+    )
 
     def get_display_name(self):
         """Return display_name if set, otherwise fall back to username."""

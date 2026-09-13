@@ -3,9 +3,19 @@
 {% block title %}My Profile{% endblock %}
 
 {% block content %}
-<h1>{{ profile_user.get_display_name }}</h1>
+<div class="profile-header">
+    {% if profile_user.profile_picture %}
+        <div class="profile-picture-wrap">
+            <img src="{{ profile_user.profile_picture.url }}" alt="Profile picture" width="150" height="150">
+        </div>
+    {% endif %}
 
-<p><strong>Username:</strong> {{ profile_user.username }}</p>
+    <div>
+        <h1>{{ profile_user.get_display_name }}</h1>
+        <p><strong>Username:</strong> {{ profile_user.username }}</p>
+    </div>
+</div>
+
 
 {% if known_boardgames_list %}
     <p><strong>Currently known boardgames:</strong></p>
@@ -16,14 +26,23 @@
     </div>
 {% endif %}
 
-<form method="post" novalidate>
+<form method="post" enctype="multipart/form-data" novalidate>
     {% csrf_token %}
 
     {% for field in form %}
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-        {{ field }}
-        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-        {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
+        {% if field.name == 'profile_picture' %}
+            <div class="profile-picture-field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
+            </div>
+        {% else %}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+            {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
+        {% endif %}
     {% endfor %}
 
     <button type="submit">Save Profile</button>

@@ -16,6 +16,7 @@ class ProfileForm(forms.ModelForm):
             'favorite_genre',
             'known_boardgames',
             'bio',
+            'profile_picture',
         ]
         widgets = {
             'known_boardgames': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Catan, Chess, Codenames'}),

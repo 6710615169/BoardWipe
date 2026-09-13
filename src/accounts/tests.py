@@ -122,7 +122,9 @@ class RegisterViewTest(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
-        self.assertFormError(response.context['form'], 'username', 'Username already exists.')
+        self.assertFormError(
+            response.context['form'], 'username', 'A user with that username already exists.'
+        )
         self.assertEqual(User.objects.count(), 1)
 
 
@@ -164,6 +166,14 @@ class LoginLogoutViewTest(TestCase):
         )
         self.assertRedirects(response, target)
 
+    def test_login_honors_next_from_the_query_string(self):
+        target = reverse('accounts:profile_settings')
+        response = self.client.post(
+            reverse('accounts:login') + '?next=' + target,
+            {'username': 'alice', 'password': 'secret123'},
+        )
+        self.assertRedirects(response, target)
+
     def test_login_ignores_offsite_next_parameter(self):
         response = self.client.post(
             reverse('accounts:login'),
@@ -177,6 +187,8 @@ class LoginLogoutViewTest(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['form'].non_field_errors())
+        # The form renders its own error, so the view must not flash a second one.
+        self.assertEqual(len(response.context['messages']), 0)
         self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_anonymous_post_to_logout_is_a_no_op_redirect(self):
@@ -244,6 +256,7 @@ class ProfileSettingsViewTest(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context['form'].errors)
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password('secret123'))
 

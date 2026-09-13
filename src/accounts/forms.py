@@ -32,19 +32,6 @@ class RegisterForm(UserCreationForm):
         model = User
         fields = ['username', 'email', 'password1', 'password2']
 
-    def clean_username(self):
-        """
-        Reject a username that differs from an existing one only by case.
-
-        Django's default check is case-sensitive, which would let 'Alice' and
-        'alice' exist as two separate accounts. Sign-in stays case-sensitive
-        (Django's default), so this only prevents near-duplicate accounts.
-        """
-        username = self.cleaned_data['username']
-        if User.objects.filter(username__iexact=username).exists():
-            raise forms.ValidationError('Username already exists.')
-        return username
-
     def clean_email(self):
         return validate_email_is_unused(self.cleaned_data.get('email', ''))
 

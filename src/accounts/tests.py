@@ -21,9 +21,12 @@ class ProfilePictureAcceptanceTest(TestCase):
         )
 
     def test_anonymous_get_redirects_to_login(self):
+        # The login view arrives with feat/auth (US-01), so this branch can only
+        # assert where we send the user, not that the page renders.
         response = self.client.get(reverse('accounts:profile'))
         self.assertEqual(response.status_code, 302)
-        self.assertIn(settings.LOGIN_URL, response.url)
+        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+        self.assertIn('next=' + reverse('accounts:profile'), response.url)
 
     def test_authenticated_get_returns_200(self):
         self.client.force_login(self.user)

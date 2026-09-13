@@ -42,6 +42,10 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'accounts.User'
 
+# The login view itself ships with feat/auth (US-01), which serves it at /login/.
+# Without this, @login_required falls back to Django's default /accounts/login/,
+# which no branch defines.
+LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = 'accounts:profile'
 
 MIDDLEWARE = [

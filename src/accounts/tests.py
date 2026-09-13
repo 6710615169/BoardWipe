@@ -1,3 +1,215 @@
-from django.test import TestCase
+import tempfile
+from io import BytesIO
 
-# Create your tests here.
+from django.conf import settings
+from django.contrib.auth.forms import PasswordChangeForm
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+from PIL import Image
+
+from .forms import ProfileForm
+from .models import User
+
+
+class ProfilePictureAcceptanceTest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='alice',
+            email='alice@example.com',
+            password='secret123',
+        )
+
+    def test_anonymous_get_redirects_to_login(self):
+        # The login view arrives with feat/auth (US-01), so this branch can only
+        # assert where we send the user, not that the page renders.
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+        self.assertIn('next=' + reverse('accounts:profile'), response.url)
+
+    def test_authenticated_get_returns_200(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/profile.html')
+
+    @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+    def test_post_with_simple_uploaded_file_returns_302_and_saves_picture(self):
+        self.client.force_login(self.user)
+
+        image = Image.new('RGB', (10, 10), color='blue')
+        image_bytes = BytesIO()
+        image.save(image_bytes, format='PNG')
+        image_bytes.seek(0)
+
+        uploaded = SimpleUploadedFile(
+            'profile.png',
+            image_bytes.read(),
+            content_type='image/png',
+        )
+
+        response = self.client.post(
+            reverse('accounts:profile'),
+            {
+                'display_name': 'Alice',
+                'favorite_boardgame': 'Catan',
+                'favorite_genre': 'strategy',
+                'known_boardgames': 'Catan, Ticket to Ride',
+                'bio': 'Hello world',
+                'profile_picture': uploaded,
+            },
+            format='multipart',
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse('accounts:profile'))
+
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.profile_picture.name)
+        self.assertIn('profile.png', self.user.profile_picture.name)
+
+    def test_profile_form_includes_profile_picture_field(self):
+        form = ProfileForm()
+        self.assertIn('profile_picture', form.fields)
+
+    def test_user_model_has_profile_picture_field_imagefield(self):
+        field = User._meta.get_field('profile_picture')
+        self.assertTrue(field.__class__.__name__ == 'ImageField')
+
+    def test_email_already_used_by_someone_else_is_rejected(self):
+        User.objects.create_user(username='bob', email='bob@example.com', password='secret123')
+        form = ProfileForm({'email': 'BOB@example.com'}, instance=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('email', form.errors)
+
+    def test_own_email_and_blank_email_are_accepted(self):
+        form = ProfileForm({'email': self.user.email}, instance=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        form = ProfileForm({'email': ''}, instance=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+
+
+class RegisterViewTest(TestCase):
+    url = '/register/'
+
+    def test_get_renders_form(self):
+        response = self.client.get(reverse('accounts:register'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/register.html')
+
+    def test_valid_post_creates_user_and_logs_them_in(self):
+        response = self.client.post(
+            reverse('accounts:register'),
+            {
+                'username': 'bob',
+                'email': 'bob@example.com',
+                'password1': 'a-str0ng-passw0rd',
+                'password2': 'a-str0ng-passw0rd',
+            },
+        )
+        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertTrue(User.objects.filter(username='bob').exists())
+        self.assertEqual(int(self.client.session['_auth_user_id']), User.objects.get(username='bob').pk)
+
+    def test_duplicate_username_is_rejected_case_insensitively(self):
+        User.objects.create_user(username='alice', password='secret123')
+        response = self.client.post(
+            reverse('accounts:register'),
+            {
+                'username': 'ALICE',
+                'email': 'other@example.com',
+                'password1': 'a-str0ng-passw0rd',
+                'password2': 'a-str0ng-passw0rd',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context['form'], 'username', 'Username already exists.')
+        self.assertEqual(User.objects.count(), 1)
+
+
+class LoginLogoutViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='alice', password='secret123')
+
+    def test_login_success_redirects_to_login_redirect_url(self):
+        response = self.client.post(
+            reverse('accounts:login'), {'username': 'alice', 'password': 'secret123'}
+        )
+        self.assertRedirects(response, reverse('accounts:profile'))
+
+    def test_login_honors_safe_next_parameter(self):
+        target = reverse('accounts:profile_settings')
+        response = self.client.post(
+            reverse('accounts:login'),
+            {'username': 'alice', 'password': 'secret123', 'next': target},
+        )
+        self.assertRedirects(response, target)
+
+    def test_login_ignores_offsite_next_parameter(self):
+        response = self.client.post(
+            reverse('accounts:login'),
+            {'username': 'alice', 'password': 'secret123', 'next': 'https://evil.example.com/'},
+        )
+        self.assertRedirects(response, reverse('accounts:profile'))
+
+    def test_login_failure_shows_error_message(self):
+        response = self.client.post(
+            reverse('accounts:login'), {'username': 'alice', 'password': 'wrong'}, follow=True
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Invalid username or password.', [str(m) for m in response.context['messages']])
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_logout_rejects_get(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:logout'))
+        self.assertEqual(response.status_code, 405)
+        self.assertIn('_auth_user_id', self.client.session)
+
+    def test_logout_via_post_ends_session(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('accounts:logout'))
+        self.assertRedirects(response, reverse('accounts:home'))
+        self.assertNotIn('_auth_user_id', self.client.session)
+
+
+class ProfileSettingsViewTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='alice', password='secret123')
+
+    def test_anonymous_get_redirects_to_login(self):
+        response = self.client.get(reverse('accounts:profile_settings'))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+
+    def test_authenticated_get_renders_password_form(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:profile_settings'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/profile_settings.html')
+        self.assertIsInstance(response.context['form'], PasswordChangeForm)
+
+    def test_password_change_applies_and_keeps_session(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('accounts:profile_settings'),
+            {
+                'old_password': 'secret123',
+                'new_password1': 'a-str0ng-passw0rd',
+                'new_password2': 'a-str0ng-passw0rd',
+            },
+        )
+        self.assertRedirects(response, reverse('accounts:profile_settings'))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('a-str0ng-passw0rd'))
+        # update_session_auth_hash must keep the user signed in after the change.
+        self.assertIn('_auth_user_id', self.client.session)
+
+
+class HomeViewTest(TestCase):
+    def test_home_renders_for_anonymous_visitor(self):
+        response = self.client.get(reverse('accounts:home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/home.html')

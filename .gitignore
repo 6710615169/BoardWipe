@@ -1,12 +1,3 @@
- HEAD
-venv/
-__pycache__/
-*.pyc
-db.sqlite3
-.vscode/
-*.log
-.env
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -69,6 +60,7 @@ cover/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
+src/media/
 
 # Flask stuff:
 instance/
@@ -225,4 +217,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
- 66e8e468bb55c972477693b2f95d75283a8e8373
+
+# Local virtualenvs
+.venv*/

@@ -1,77 +1,121 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
-from django.contrib import messages
+from django.shortcuts import redirect, render, resolve_url
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 
-from .forms import RegisterForm
+from .forms import ProfileForm, RegisterForm
+
 
 def home(request):
-    return render(request, 'home.html')
+    return render(request, 'accounts/home.html')
 
 
 def register_view(request):
+    """Create an account and sign the new user straight in."""
     if request.user.is_authenticated:
-        return redirect('profile')
+        return redirect('accounts:profile')
 
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
-            messages.success(request, "Account created successfully! Welcome.")
-            return redirect('profile')
+            messages.success(request, 'Account created successfully! Welcome.')
+            return redirect('accounts:profile')
     else:
         form = RegisterForm()
 
     return render(request, 'accounts/register.html', {'form': form})
 
 
+def _safe_redirect_target(request):
+    """
+    Return the ?next= target when it is safe, otherwise LOGIN_REDIRECT_URL.
+
+    Without this, an anonymous visit to a @login_required page would bounce
+    through login and then dump the user somewhere they did not ask for.
+    """
+    next_url = request.POST.get('next') or request.GET.get('next')
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return resolve_url(settings.LOGIN_REDIRECT_URL)
+
+
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect('home')
+        return redirect('accounts:profile')
 
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                return redirect('home')
-        else:
-            messages.error(request, "Invalid username or password.")
+            # AuthenticationForm already authenticated the credentials during
+            # validation; get_user() returns that user without hashing again.
+            login(request, form.get_user())
+            return redirect(_safe_redirect_target(request))
+        messages.error(request, 'Invalid username or password.')
     else:
-        form = AuthenticationForm()
+        form = AuthenticationForm(request)
 
-    return render(request, 'accounts/login.html', {'form': form})
+    return render(request, 'accounts/login.html', {'form': form, 'next': request.GET.get('next', '')})
+
+
+@require_POST
+@login_required
+def logout_view(request):
+    """POST-only, so a stray link or a prefetching browser cannot sign people out."""
+    logout(request)
+    messages.success(request, 'You have been logged out.')
+    return redirect('accounts:home')
 
 
 @login_required
-def logout_view(request):
-    logout(request)
-    messages.success(request, "You have been logged out.")
-    return redirect('home')
+def profile_view(request):
+    """
+    Show the logged-in user's profile and let them edit it in place.
+
+    GET  -> render the profile with a bound form showing current values.
+    POST -> validate and save changes, then redisplay the (now updated) profile.
+    """
+    user = request.user
+
+    if request.method == 'POST':
+        form = ProfileForm(request.POST, request.FILES, instance=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your profile has been updated.')
+            return redirect('accounts:profile')
+    else:
+        form = ProfileForm(instance=user)
+
+    context = {
+        'form': form,
+        'profile_user': user,
+        'known_boardgames_list': user.known_boardgames_list(),
+    }
+    return render(request, 'accounts/profile.html', context)
 
 
 @login_required
 def profile_settings_view(request):
+    """Let a signed-in user change their own password."""
     if request.method == 'POST':
         form = PasswordChangeForm(user=request.user, data=request.POST)
         if form.is_valid():
             user = form.save()
-            update_session_auth_hash(request, user)  # keeps the user logged in after password change
-            messages.success(request, "Password changed successfully.")
-            return redirect('profile_settings')
+            # Rotating the password invalidates the session hash; refresh it so
+            # the user is not logged out by their own password change.
+            update_session_auth_hash(request, user)
+            messages.success(request, 'Password changed successfully.')
+            return redirect('accounts:profile_settings')
     else:
         form = PasswordChangeForm(user=request.user)
 
     return render(request, 'accounts/profile_settings.html', {'form': form})
-
-
-@login_required
-def profile_placeholder_view(request):
-    # Temporary placeholder so 'profile' url works.
-    # Your friend's Profile app should replace/override this view.
-    return render(request, 'accounts/profile_setting.html') 

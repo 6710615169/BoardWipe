@@ -1,0 +1,16 @@
+{% extends "accounts/base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<h1>Home</h1>
+{% if user.is_authenticated %}
+  <p>Hello, {{ user.get_display_name }}!</p>
+  <a href="{% url 'accounts:profile' %}">My Profile</a>
+  <form method="post" action="{% url 'accounts:logout' %}">
+    {% csrf_token %}
+    <button type="submit">Log out</button>
+  </form>
+{% else %}
+  <a href="{% url 'accounts:login' %}">Log in</a>
+  <a href="{% url 'accounts:register' %}">Register</a>
+{% endif %}
+{% endblock %}

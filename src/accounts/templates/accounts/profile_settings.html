@@ -1,0 +1,17 @@
+{% extends "accounts/base.html" %}
+{% block title %}Profile Settings{% endblock %}
+{% block content %}
+<h1>Profile Settings</h1>
+
+<h2>Change password</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Change password</button>
+</form>
+
+<form method="post" action="{% url 'accounts:logout' %}">
+  {% csrf_token %}
+  <button type="submit">Log out</button>
+</form>
+{% endblock %}

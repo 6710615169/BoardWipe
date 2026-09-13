@@ -76,3 +76,15 @@ class ProfilePictureAcceptanceTest(TestCase):
     def test_user_model_has_profile_picture_field_imagefield(self):
         field = User._meta.get_field('profile_picture')
         self.assertTrue(field.__class__.__name__ == 'ImageField')
+
+    def test_email_already_used_by_someone_else_is_rejected(self):
+        User.objects.create_user(username='bob', email='bob@example.com', password='secret123')
+        form = ProfileForm({'email': 'BOB@example.com'}, instance=self.user)
+        self.assertFalse(form.is_valid())
+        self.assertIn('email', form.errors)
+
+    def test_own_email_and_blank_email_are_accepted(self):
+        form = ProfileForm({'email': self.user.email}, instance=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        form = ProfileForm({'email': ''}, instance=self.user)
+        self.assertTrue(form.is_valid(), form.errors)

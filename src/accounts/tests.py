@@ -23,7 +23,7 @@ class ProfilePictureAcceptanceTest(TestCase):
     def test_anonymous_get_redirects_to_login(self):
         response = self.client.get(reverse('accounts:profile'))
         self.assertEqual(response.status_code, 302)
-        self.assertIn('/accounts/login/', response.url)
+        self.assertIn(settings.LOGIN_URL, response.url)
 
     def test_authenticated_get_returns_200(self):
         self.client.force_login(self.user)

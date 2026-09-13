@@ -3,7 +3,6 @@ from django.contrib.auth.models import AbstractUser
 
 
 class User(AbstractUser):
-    email = models.EmailField(unique=True, blank=True)
     """Custom user with extra profile fields for the boardgame community."""
 
     GENRE_CHOICES = [

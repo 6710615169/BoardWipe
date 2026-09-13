@@ -22,3 +22,10 @@ class ProfileForm(forms.ModelForm):
             'known_boardgames': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Catan, Chess, Codenames'}),
             'bio': forms.Textarea(attrs={'rows': 4}),
         }
+
+    def clean_email(self):
+        """Reject an email already used by someone else. Blank is allowed for anyone."""
+        email = self.cleaned_data.get('email', '')
+        if email and User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError('A user with that email already exists.')
+        return email

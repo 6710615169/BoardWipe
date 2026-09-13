@@ -3,12 +3,12 @@
   <h1>Home</h1>
   {% if user.is_authenticated %}
   <p>Hello, {{ user.username }}!</p>
-  <a href="{% url 'profile' %}">My Profile</a>
+  <a href="{% url 'profile' %}"class="btn">My Profile</a>
   <form method="post" action="{% url 'logout' %}">
     {% csrf_token %}
-    <button type="submit">Log out</button>
+    <button type="submit" class="btn-danger">Log out</button>
   </form>
 {% else %}
-  <a href="{% url 'login' %}">Log in</a>
+  <a href="{% url 'login' %}"class="btn">Log in</a>
 {% endif %}
 {% endblock %} 

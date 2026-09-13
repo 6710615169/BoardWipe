@@ -10,11 +10,11 @@
 <form method="post">
   {% csrf_token %}
   {{ form.as_p }}
-  <button type="submit">Change Password</button>
+  <a href="{% url 'password_change' %}" class="btn">Change password</a>
 </form>
 
 <form method="post" action="{% url 'logout' %}">
   {% csrf_token %}
-  <button type="submit">Logout</button>
+  <button type="submit" class="btn-danger">Logout</button>
 </form>
 {% endblock %}

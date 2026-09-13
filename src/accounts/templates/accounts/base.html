@@ -16,6 +16,7 @@
         button:hover { background: #245a94; }
         .messages { list-style: none; padding: 0; }
         .messages li { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
+        .messages li.error { background: #f8d7da; color: #721c24; }
         .errorlist { color: #b00020; }
         .tag-list span { display: inline-block; background: #eef; padding: 4px 10px; margin: 3px;
             border-radius: 12px; font-size: 0.9em; }
@@ -44,7 +45,7 @@
 
     {% if messages %}
         <ul class="messages">
-            {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+            {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
         </ul>
     {% endif %}
 

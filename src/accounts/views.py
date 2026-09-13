@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
-from django.shortcuts import redirect, render, resolve_url
+from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -32,23 +32,6 @@ def register_view(request):
     return render(request, 'accounts/register.html', {'form': form})
 
 
-def _safe_redirect_target(request):
-    """
-    Return the ?next= target when it is safe, otherwise LOGIN_REDIRECT_URL.
-
-    Without this, an anonymous visit to a @login_required page would bounce
-    through login and then dump the user somewhere they did not ask for.
-    """
-    next_url = request.POST.get('next') or request.GET.get('next')
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        return next_url
-    return resolve_url(settings.LOGIN_REDIRECT_URL)
-
-
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('accounts:profile')
@@ -59,8 +42,16 @@ def login_view(request):
             # AuthenticationForm already authenticated the credentials during
             # validation; get_user() returns that user without hashing again.
             login(request, form.get_user())
-            return redirect(_safe_redirect_target(request))
-        messages.error(request, 'Invalid username or password.')
+            # Send the user where they were headed, but only if that target is
+            # on this site -- an unchecked ?next= is an open redirect.
+            next_url = request.POST.get('next')
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+            ):
+                return redirect(next_url)
+            return redirect(settings.LOGIN_REDIRECT_URL)
+        # The form already renders "Please enter a correct username and
+        # password", so adding a messages.error here would show it twice.
     else:
         form = AuthenticationForm(request)
 
@@ -68,7 +59,6 @@ def login_view(request):
 
 
 @require_POST
-@login_required
 def logout_view(request):
     """POST-only, so a stray link or a prefetching browser cannot sign people out."""
     logout(request)

@@ -60,7 +60,6 @@ class ProfilePictureAcceptanceTest(TestCase):
                 'bio': 'Hello world',
                 'profile_picture': uploaded,
             },
-            format='multipart',
         )
 
         self.assertEqual(response.status_code, 302)
@@ -92,8 +91,6 @@ class ProfilePictureAcceptanceTest(TestCase):
 
 
 class RegisterViewTest(TestCase):
-    url = '/register/'
-
     def test_get_renders_form(self):
         response = self.client.get(reverse('accounts:register'))
         self.assertEqual(response.status_code, 200)
@@ -110,7 +107,7 @@ class RegisterViewTest(TestCase):
             },
         )
         self.assertRedirects(response, reverse('accounts:profile'))
-        self.assertTrue(User.objects.filter(username='bob').exists())
+        self.assertEqual(User.objects.get(username='bob').email, 'bob@example.com')
         self.assertEqual(int(self.client.session['_auth_user_id']), User.objects.get(username='bob').pk)
 
     def test_duplicate_username_is_rejected_case_insensitively(self):
@@ -127,6 +124,26 @@ class RegisterViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFormError(response.context['form'], 'username', 'Username already exists.')
         self.assertEqual(User.objects.count(), 1)
+
+
+    def test_duplicate_email_is_rejected_case_insensitively(self):
+        User.objects.create_user(username='alice', email='dup@example.com', password='secret123')
+        response = self.client.post(
+            reverse('accounts:register'),
+            {
+                'username': 'bob',
+                'email': 'DUP@example.com',
+                'password1': 'a-str0ng-passw0rd',
+                'password2': 'a-str0ng-passw0rd',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context['form'], 'email', 'A user with that email already exists.')
+        self.assertEqual(User.objects.count(), 1)
+
+    def test_authenticated_user_is_sent_to_profile(self):
+        self.client.force_login(User.objects.create_user(username='alice', password='secret123'))
+        self.assertRedirects(self.client.get(reverse('accounts:register')), reverse('accounts:profile'))
 
 
 class LoginLogoutViewTest(TestCase):
@@ -154,13 +171,21 @@ class LoginLogoutViewTest(TestCase):
         )
         self.assertRedirects(response, reverse('accounts:profile'))
 
-    def test_login_failure_shows_error_message(self):
+    def test_login_failure_shows_one_error_and_does_not_sign_in(self):
         response = self.client.post(
-            reverse('accounts:login'), {'username': 'alice', 'password': 'wrong'}, follow=True
+            reverse('accounts:login'), {'username': 'alice', 'password': 'wrong'}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Invalid username or password.', [str(m) for m in response.context['messages']])
+        self.assertTrue(response.context['form'].non_field_errors())
         self.assertNotIn('_auth_user_id', self.client.session)
+
+    def test_anonymous_post_to_logout_is_a_no_op_redirect(self):
+        response = self.client.post(reverse('accounts:logout'))
+        self.assertRedirects(response, reverse('accounts:home'))
+
+    def test_authenticated_user_is_sent_to_profile(self):
+        self.client.force_login(self.user)
+        self.assertRedirects(self.client.get(reverse('accounts:login')), reverse('accounts:profile'))
 
     def test_logout_rejects_get(self):
         self.client.force_login(self.user)
@@ -206,6 +231,21 @@ class ProfileSettingsViewTest(TestCase):
         self.assertTrue(self.user.check_password('a-str0ng-passw0rd'))
         # update_session_auth_hash must keep the user signed in after the change.
         self.assertIn('_auth_user_id', self.client.session)
+
+
+    def test_wrong_old_password_leaves_password_unchanged(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('accounts:profile_settings'),
+            {
+                'old_password': 'not-my-password',
+                'new_password1': 'a-str0ng-passw0rd',
+                'new_password2': 'a-str0ng-passw0rd',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('secret123'))
 
 
 class HomeViewTest(TestCase):

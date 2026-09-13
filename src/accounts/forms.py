@@ -4,12 +4,31 @@ from django.contrib.auth.forms import UserCreationForm
 from .models import User
 
 
+def validate_email_is_unused(email, exclude_pk=None):
+    """
+    Reject an email already used by another account.
+
+    Registration and profile editing must agree on this: if only one of them
+    checks, a duplicate slips in at signup and then locks that user out of
+    saving their own profile. Note this is a form-level check with a
+    check-then-write race; real enforcement needs unique=True on the model.
+    """
+    if not email:
+        return email
+    clash = User.objects.filter(email__iexact=email)
+    if exclude_pk is not None:
+        clash = clash.exclude(pk=exclude_pk)
+    if clash.exists():
+        raise forms.ValidationError('A user with that email already exists.')
+    return email
+
+
 class RegisterForm(UserCreationForm):
     """Sign-up form: username + email on top of Django's password handling."""
 
     email = forms.EmailField(required=True)
 
-    class Meta:
+    class Meta(UserCreationForm.Meta):
         model = User
         fields = ['username', 'email', 'password1', 'password2']
 
@@ -18,12 +37,16 @@ class RegisterForm(UserCreationForm):
         Reject a username that differs from an existing one only by case.
 
         Django's default check is case-sensitive, which would let 'Alice' and
-        'alice' coexist and confuse people signing in. Keep the iexact lookup.
+        'alice' exist as two separate accounts. Sign-in stays case-sensitive
+        (Django's default), so this only prevents near-duplicate accounts.
         """
         username = self.cleaned_data['username']
         if User.objects.filter(username__iexact=username).exists():
             raise forms.ValidationError('Username already exists.')
         return username
+
+    def clean_email(self):
+        return validate_email_is_unused(self.cleaned_data.get('email', ''))
 
 
 class ProfileForm(forms.ModelForm):
@@ -48,8 +71,5 @@ class ProfileForm(forms.ModelForm):
         }
 
     def clean_email(self):
-        """Reject an email already used by someone else. Blank is allowed for anyone."""
-        email = self.cleaned_data.get('email', '')
-        if email and User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError('A user with that email already exists.')
-        return email
+        """Blank is allowed here; the profile form does not require an email."""
+        return validate_email_is_unused(self.cleaned_data.get('email', ''), exclude_pk=self.instance.pk)

@@ -17,14 +17,20 @@ class ProfileSearchTests(TestCase):
         self.me = User.objects.create_user('me', password='pass12345')
         self.alice = User.objects.create_user(
             'alice', password='x', favorite_genre='strategy',
-            known_boardgames='Catan, Chess')
+            known_boardgames='Catan, Chess',owned_boardgames='Catan, Gloomhaven')
         self.bob = User.objects.create_user(
             'bob', password='x', favorite_genre='party',
-            known_boardgames='Codenames')
+            known_boardgames='Codenames',owned_boardgames='Uno')
         self.dave = User.objects.create_user(
             'dave', password='x', favorite_genre='strategy', is_active=False)
         self.client.login(username='me', password='pass12345')
-
+    def test_owned_boardgames_shown_in_results(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
+        self.assertContains(r, 'Gloomhaven')
+    def test_filter_by_owned_boardgame(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
+        self.assertContains(r, 'alice')
+        self.assertNotContains(r, 'bob')
     def test_search_by_name(self):
         r = self.client.get(reverse('accounts:profile_search'), {'q': 'ali'})
         self.assertContains(r, 'alice')

@@ -36,6 +36,10 @@ class User(AbstractUser):
         blank=True,
         help_text="Comma-separated list of boardgames you know how to play, e.g. 'Catan, Chess, Codenames'.",
     )
+    owned_boardgames = models.TextField(
+        blank=True,
+        help_text="Comma-separated list of boardgames you own, e.g. 'Catan, Chess, Codenames'.",
+    )
     bio = models.TextField(
         # Django enforces max_length only in form/model validation, not at the database level.
         max_length=500,
@@ -55,6 +59,10 @@ class User(AbstractUser):
     def known_boardgames_list(self):
         """Return known_boardgames as a clean list of names."""
         return [g.strip() for g in self.known_boardgames.split(',') if g.strip()]
+
+    def owned_boardgames_list(self):
+        """Return owned_boardgames as a clean list of names."""
+        return [g.strip() for g in self.owned_boardgames.split(',') if g.strip()]
 
     def __str__(self):
         return self.username

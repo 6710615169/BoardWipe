@@ -18,9 +18,9 @@ def profile_search_view(request):
     genre = request.GET.get('genre', '')
     known = request.GET.get('known', '').strip()
     favorite = request.GET.get('favorite', '').strip()
-
+    owned = request.GET.get('owned', '').strip()
     users = User.objects.filter(is_active=True).exclude(pk=request.user.pk)
-
+    
     if q:
         users = users.filter(
             Q(username__icontains=q) |
@@ -34,11 +34,12 @@ def profile_search_view(request):
         users = users.filter(known_boardgames__icontains=known)
     if favorite:
         users = users.filter(favorite_boardgame__icontains=favorite)
-
+    if owned:
+        users = users.filter(owned_boardgames__icontains=owned)
     return render(request, 'accounts/profile_search.html', {
         'users_found': users.order_by('username'),
         'genre_choices': User.GENRE_CHOICES,
-        'q': q, 'genre': genre, 'known': known, 'favorite': favorite,
+        'q': q, 'genre': genre, 'known': known, 'favorite': favorite, 'owned': owned,
     })
 
 

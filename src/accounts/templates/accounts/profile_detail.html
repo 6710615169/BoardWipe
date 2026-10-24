@@ -18,6 +18,13 @@
     <li>None listed</li>
   {% endfor %}
 </ul>
-
+<p>Owned boardgames:</p>
+<ul>
+  {% for game in profile_user.owned_boardgames_list %}
+    <li>{{ game }}</li>
+  {% empty %}
+    <li>None listed</li>
+  {% endfor %}
+</ul>
 <a href="{% url 'accounts:profile_search' %}" class="btn">Back to search</a>
 {% endblock %}

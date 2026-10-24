@@ -48,12 +48,10 @@ class ProfileForm(forms.ModelForm):
             'email',
             'favorite_boardgame',
             'favorite_genre',
-            'known_boardgames',
             'bio',
             'profile_picture',
         ]
         widgets = {
-            'known_boardgames': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Catan, Chess, Codenames'}),
             'bio': forms.Textarea(attrs={'rows': 4}),
         }
 

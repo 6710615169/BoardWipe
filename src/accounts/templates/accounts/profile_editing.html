@@ -143,14 +143,10 @@
             {% endwith %}
         </div>
 
-        {% with field=form.known_boardgames %}
-        <div class="field{% if field.errors %} has-error{% endif %}">
-            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            <small>Separate games with commas, e.g. Catan, Chess, Codenames.</small>
-            {% if field.errors %}{{ field.errors }}{% endif %}
-        </div>
-        {% endwith %}
+        <p class="section-hint field">
+            Games you know or own are managed on your profile.
+            <a href="{% url 'accounts:boardgame_add' %}">Add a game</a>
+        </p>
     </section>
 
     {# ---------- About ---------- #}

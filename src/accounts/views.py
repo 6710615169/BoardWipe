@@ -72,7 +72,6 @@ def profile_view(request):
     user = request.user
     context = {
         'profile_user': user,
-        'known_boardgames_list': user.known_boardgames_list(),
         'profile_boardgames': user.profile_boardgames.all(),
     }
     return render(request, 'accounts/profile.html', context)

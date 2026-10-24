@@ -1,50 +1,109 @@
 {% extends "accounts/base.html" %}
 
-{% block title %}My Profile{% endblock %}
+{% block title %}{{ profile_user.get_display_name }} · Profile{% endblock %}
 
 {% block content %}
-<div class="profile-header">
-    {% if profile_user.profile_picture %}
-        <div class="profile-picture-wrap">
-            <img src="{{ profile_user.profile_picture.url }}" alt="Profile picture" width="150" height="150">
+<style>
+    .profile-card { border: 1px solid #d0d7de; border-radius: 12px; overflow: hidden; background: #fff; }
+    .profile-banner { height: 72px; background: linear-gradient(135deg, #2b6cb0, #4c8fd6); }
+    .profile-top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; padding: 0 20px 16px; margin-top: -48px; }
+    .profile-avatar { width: 112px; height: 112px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+        border: 4px solid #fff; background: #e2ebf5; box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+        display: flex; align-items: center; justify-content: center; }
+    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-avatar .initial { font-size: 44px; font-weight: bold; color: #2b6cb0; text-transform: uppercase; }
+    .profile-identity { flex: 1; min-width: 180px; padding-bottom: 4px; }
+    .profile-identity h1 { border: none; padding: 0; margin: 0; font-size: 1.6em; word-break: break-word; }
+    .profile-identity .handle { color: #57606a; margin: 2px 0 0; }
+    .btn-edit { display: inline-block; padding: 9px 18px; border-radius: 6px; background: #2b6cb0; color: #fff;
+        text-decoration: none; font-weight: bold; white-space: nowrap; margin-bottom: 4px; }
+    .btn-edit:hover, .btn-edit:focus { background: #245a94; }
+    .btn-edit:focus-visible { outline: 3px solid #9cc3ec; outline-offset: 2px; }
+    .profile-body { padding: 4px 20px 20px; }
+    .profile-section { padding: 16px 0; border-top: 1px solid #eaeef2; }
+    .profile-section h2 { font-size: .8em; text-transform: uppercase; letter-spacing: .06em; color: #57606a; margin: 0 0 10px; }
+    .profile-section p { margin: 0; line-height: 1.5; }
+    .detail-list { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; }
+    .detail-list dt { color: #57606a; }
+    .detail-list dd { margin: 0; word-break: break-word; }
+    .empty { color: #8c959f; font-style: italic; }
+    .empty a { font-style: normal; }
+    .profile-section .tag-list span { margin: 0 6px 6px 0; }
+    .count { font-weight: normal; color: #8c959f; }
+    @media (max-width: 480px) {
+        .profile-top { flex-direction: column; align-items: flex-start; }
+        .detail-list { grid-template-columns: 1fr; gap: 2px; }
+        .detail-list dd { margin-bottom: 8px; }
+    }
+</style>
+
+<article class="profile-card">
+    <div class="profile-banner" aria-hidden="true"></div>
+
+    <header class="profile-top">
+        <div class="profile-avatar">
+            {% if profile_user.profile_picture %}
+                <img src="{{ profile_user.profile_picture.url }}" alt="Profile picture of {{ profile_user.get_display_name }}">
+            {% else %}
+                <span class="initial" aria-hidden="true">{{ profile_user.get_display_name|first }}</span>
+            {% endif %}
         </div>
-    {% endif %}
 
-    <div>
-        <h1>{{ profile_user.get_display_name }}</h1>
-        <p><strong>Username:</strong> {{ profile_user.username }}</p>
+        <div class="profile-identity">
+            <h1>{{ profile_user.get_display_name }}</h1>
+            <p class="handle">@{{ profile_user.username }}</p>
+        </div>
+
+        <a class="btn-edit" href="{% url 'accounts:profile_editing' %}">Edit profile</a>
+    </header>
+
+    <div class="profile-body">
+        <section class="profile-section">
+            <h2>About</h2>
+            {% if profile_user.bio %}
+                <p>{{ profile_user.bio|linebreaksbr }}</p>
+            {% else %}
+                <p class="empty">No bio yet. <a href="{% url 'accounts:profile_editing' %}">Tell others about yourself</a></p>
+            {% endif %}
+        </section>
+
+        <section class="profile-section">
+            <h2>Details</h2>
+            <dl class="detail-list">
+                <dt>Name</dt>
+                <dd>
+                    {% if profile_user.get_full_name %}{{ profile_user.get_full_name }}{% else %}<span class="empty">Not set</span>{% endif %}
+                </dd>
+
+                <dt>Email</dt>
+                <dd>
+                    {% if profile_user.email %}{{ profile_user.email }}{% else %}<span class="empty">Not set</span>{% endif %}
+                </dd>
+
+                <dt>Favorite boardgame</dt>
+                <dd>
+                    {% if profile_user.favorite_boardgame %}{{ profile_user.favorite_boardgame }}{% else %}<span class="empty">Not set</span>{% endif %}
+                </dd>
+
+                <dt>Favorite genre</dt>
+                <dd>
+                    {% if profile_user.favorite_genre %}{{ profile_user.get_favorite_genre_display }}{% else %}<span class="empty">Not set</span>{% endif %}
+                </dd>
+            </dl>
+        </section>
+
+        <section class="profile-section">
+            <h2>Known boardgames {% if known_boardgames_list %}<span class="count">({{ known_boardgames_list|length }})</span>{% endif %}</h2>
+            {% if known_boardgames_list %}
+                <div class="tag-list">
+                    {% for game in known_boardgames_list %}
+                        <span>{{ game }}</span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="empty">No games listed yet. <a href="{% url 'accounts:profile_editing' %}">Add the games you know</a></p>
+            {% endif %}
+        </section>
     </div>
-</div>
-
-
-{% if known_boardgames_list %}
-    <p><strong>Currently known boardgames:</strong></p>
-    <div class="tag-list">
-        {% for game in known_boardgames_list %}
-            <span>{{ game }}</span>
-        {% endfor %}
-    </div>
-{% endif %}
-
-<form method="post" enctype="multipart/form-data" novalidate>
-    {% csrf_token %}
-
-    {% for field in form %}
-        {% if field.name == 'profile_picture' %}
-            <div class="profile-picture-field">
-                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-                {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
-            </div>
-        {% else %}
-            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-            {% if field.errors %}<div class="errorlist">{{ field.errors }}</div>{% endif %}
-        {% endif %}
-    {% endfor %}
-
-    <button type="submit">Save Profile</button>
-</form>
+</article>
 {% endblock %}

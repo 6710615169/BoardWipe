@@ -40,7 +40,40 @@ class ProfilePictureAcceptanceTest(TestCase):
         response = self.client.get(reverse('accounts:profile'))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Edit profile')
-        self.assertContains(response, reverse('accounts:profile_settings'))
+        self.assertContains(response, reverse('accounts:profile_editing'))
+
+    def test_profile_page_is_read_only(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('accounts:profile'), {'display_name': 'Hacked'})
+        self.assertEqual(response.status_code, 405)
+
+    def test_editing_page_requires_login(self):
+        response = self.client.get(reverse('accounts:profile_editing'))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+
+    def test_editing_page_renders_form_with_current_values(self):
+        self.user.favorite_boardgame = 'Azul'
+        self.user.save()
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:profile_editing'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/profile_editing.html')
+        self.assertIsInstance(response.context['form'], ProfileForm)
+        self.assertContains(response, 'value="Azul"')
+
+    def test_invalid_edit_rerenders_with_errors_and_does_not_save(self):
+        User.objects.create_user(username='bob', email='bob@example.com', password='secret123')
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('accounts:profile_editing'),
+            {'display_name': 'Alice', 'email': 'bob@example.com'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/profile_editing.html')
+        self.assertIn('email', response.context['form'].errors)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.display_name, '')
 
     @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
     def test_post_with_simple_uploaded_file_returns_302_and_saves_picture(self):
@@ -58,7 +91,7 @@ class ProfilePictureAcceptanceTest(TestCase):
         )
 
         response = self.client.post(
-            reverse('accounts:profile'),
+            reverse('accounts:profile_editing'),
             {
                 'display_name': 'Alice',
                 'favorite_boardgame': 'Catan',

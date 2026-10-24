@@ -10,8 +10,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
-from .forms import AddBoardGameForm, BoardGameImageForm, ProfileForm
-from .models import BoardGame, User, UserBoardGame
+from .forms import ProfileBoardgameEditForm, ProfileBoardgameForm, ProfileForm
+from .models import ProfileBoardgame, User
 
 TEST_MEDIA_ROOT = tempfile.mkdtemp()
 
@@ -24,7 +24,7 @@ def make_image(name='game.png', color='blue'):
 
 
 @override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
-class BoardGameTestCase(TestCase):
+class ProfileBoardgameTestCase(TestCase):
     """Shared setup: two users and a throwaway MEDIA_ROOT for uploads."""
 
     @classmethod
@@ -37,117 +37,134 @@ class BoardGameTestCase(TestCase):
         self.bob = User.objects.create_user(username='bob', password='secret123')
 
 
-class BoardGameModelTest(BoardGameTestCase):
-    def test_name_is_trimmed_and_inner_spaces_collapsed(self):
-        game = BoardGame.objects.create(name='  Ticket   to  Ride ')
-        self.assertEqual(game.name, 'Ticket to Ride')
-
-    def test_names_are_unique_case_insensitively(self):
-        BoardGame.objects.create(name='Catan')
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            BoardGame.objects.create(name='CATAN')
-
-    def test_str_is_name(self):
-        self.assertEqual(str(BoardGame.objects.create(name='Chess')), 'Chess')
-
-
-class UserBoardGameModelTest(BoardGameTestCase):
-    def setUp(self):
-        super().setUp()
-        self.catan = BoardGame.objects.create(name='Catan')
-
-    def test_image_is_an_optional_imagefield(self):
-        field = UserBoardGame._meta.get_field('image')
+class ProfileBoardgameModelTest(ProfileBoardgameTestCase):
+    def test_picture_is_an_optional_imagefield(self):
+        field = ProfileBoardgame._meta.get_field('picture')
         self.assertEqual(field.__class__.__name__, 'ImageField')
         self.assertTrue(field.blank)
 
-    def test_user_cannot_have_the_same_game_twice(self):
-        UserBoardGame.objects.create(user=self.alice, boardgame=self.catan)
+    def test_defaults_to_known_and_not_owned(self):
+        game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')
+        self.assertTrue(game.is_known)
+        self.assertFalse(game.is_owned)
+
+    def test_name_is_trimmed_and_inner_spaces_collapsed(self):
+        game = ProfileBoardgame.objects.create(user=self.alice, name='  Ticket   to  Ride ')
+        self.assertEqual(game.name, 'Ticket to Ride')
+
+    def test_user_cannot_have_the_same_game_twice_ignoring_case_and_spacing(self):
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan')
         with self.assertRaises(IntegrityError), transaction.atomic():
-            UserBoardGame.objects.create(user=self.alice, boardgame=self.catan)
+            ProfileBoardgame.objects.create(user=self.alice, name=' CATAN ')
 
-    def test_each_user_keeps_their_own_picture_of_the_same_game(self):
-        alice_entry = UserBoardGame.objects.create(
-            user=self.alice, boardgame=self.catan, image=make_image('alice.png'),
+    def test_different_users_can_each_have_their_own_picture_of_a_game(self):
+        alice_game = ProfileBoardgame.objects.create(
+            user=self.alice, name='Catan', picture=make_image('alice.png'),
         )
-        bob_entry = UserBoardGame.objects.create(
-            user=self.bob, boardgame=self.catan, image=make_image('bob.png', color='red'),
+        bob_game = ProfileBoardgame.objects.create(
+            user=self.bob, name='Catan', picture=make_image('bob.png', color='red'),
         )
-        self.assertEqual(BoardGame.objects.count(), 1)
-        self.assertNotEqual(alice_entry.image.name, bob_entry.image.name)
+        self.assertNotEqual(alice_game.picture.name, bob_game.picture.name)
 
-    def test_known_boardgames_relation_goes_through_user_boardgame(self):
-        UserBoardGame.objects.create(user=self.alice, boardgame=self.catan)
-        self.assertQuerySetEqual(self.alice.known_boardgames.all(), [self.catan])
-        self.assertQuerySetEqual(self.catan.known_by.all(), [self.alice])
+    def test_game_must_be_known_or_owned(self):
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            ProfileBoardgame.objects.create(
+                user=self.alice, name='Catan', is_known=False, is_owned=False,
+            )
 
-    def test_deleting_a_user_removes_their_entries_but_keeps_the_game(self):
-        UserBoardGame.objects.create(user=self.alice, boardgame=self.catan)
+    def test_owned_but_not_known_is_allowed(self):
+        game = ProfileBoardgame.objects.create(
+            user=self.alice, name='Gloomhaven', is_known=False, is_owned=True,
+        )
+        self.assertTrue(game.pk)
+
+    def test_deleting_a_user_removes_their_games(self):
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan')
         self.alice.delete()
-        self.assertFalse(UserBoardGame.objects.exists())
-        self.assertTrue(BoardGame.objects.filter(pk=self.catan.pk).exists())
+        self.assertFalse(ProfileBoardgame.objects.exists())
+
+    def test_old_known_boardgames_text_field_is_kept(self):
+        # Teammates still use it; it is retired only after a data migration.
+        self.assertEqual(User._meta.get_field('known_boardgames').__class__.__name__, 'TextField')
 
 
-class AddBoardGameFormTest(BoardGameTestCase):
-    def test_creates_game_and_entry_with_picture(self):
-        form = AddBoardGameForm({'name': 'Catan'}, {'image': make_image()}, user=self.alice)
+class ProfileBoardgameFormTest(ProfileBoardgameTestCase):
+    def test_creates_game_with_picture_and_flags(self):
+        form = ProfileBoardgameForm(
+            {'name': 'Catan', 'is_known': 'on', 'is_owned': 'on'},
+            {'picture': make_image()},
+            user=self.alice,
+        )
         self.assertTrue(form.is_valid(), form.errors)
-        entry = form.save()
-        self.assertEqual(entry.user, self.alice)
-        self.assertEqual(entry.boardgame.name, 'Catan')
-        self.assertTrue(entry.image.name.startswith('boardgame_images/'))
+        game = form.save()
+        self.assertEqual(game.user, self.alice)
+        self.assertEqual(game.name, 'Catan')
+        self.assertTrue(game.is_known)
+        self.assertTrue(game.is_owned)
+        self.assertTrue(game.picture.name.startswith('boardgame_pictures/'))
+
+    def test_known_is_ticked_and_owned_unticked_by_default(self):
+        form = ProfileBoardgameForm(user=self.alice)
+        self.assertTrue(form['is_known'].value())
+        self.assertFalse(form['is_owned'].value())
 
     def test_picture_is_optional(self):
-        form = AddBoardGameForm({'name': 'Chess'}, user=self.alice)
+        form = ProfileBoardgameForm({'name': 'Chess', 'is_known': 'on'}, user=self.alice)
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertFalse(form.save().image)
-
-    def test_reuses_existing_game_regardless_of_case_and_spacing(self):
-        existing = BoardGame.objects.create(name='Ticket to Ride')
-        form = AddBoardGameForm({'name': '  ticket  TO ride '}, user=self.alice)
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.save().boardgame, existing)
-        self.assertEqual(BoardGame.objects.count(), 1)
+        self.assertFalse(form.save().picture)
 
     def test_same_user_cannot_add_the_same_game_again(self):
-        catan = BoardGame.objects.create(name='Catan')
-        UserBoardGame.objects.create(user=self.alice, boardgame=catan)
-        form = AddBoardGameForm({'name': 'cAtAn '}, {'image': make_image()}, user=self.alice)
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan')
+        form = ProfileBoardgameForm(
+            {'name': ' cAtAn ', 'is_owned': 'on'}, {'picture': make_image()}, user=self.alice,
+        )
         self.assertFalse(form.is_valid())
         self.assertIn('name', form.errors)
 
     def test_another_user_can_add_a_game_someone_already_has(self):
-        catan = BoardGame.objects.create(name='Catan')
-        UserBoardGame.objects.create(user=self.alice, boardgame=catan)
-        form = AddBoardGameForm({'name': 'Catan'}, user=self.bob)
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan')
+        form = ProfileBoardgameForm({'name': 'Catan', 'is_known': 'on'}, user=self.bob)
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.save().boardgame, catan)
+
+    def test_neither_known_nor_owned_is_rejected(self):
+        form = ProfileBoardgameForm({'name': 'Catan'}, user=self.alice)
+        self.assertFalse(form.is_valid())
+        self.assertTrue(form.non_field_errors())
 
     def test_blank_name_is_rejected(self):
-        form = AddBoardGameForm({'name': '   '}, user=self.alice)
+        form = ProfileBoardgameForm({'name': '   ', 'is_known': 'on'}, user=self.alice)
         self.assertFalse(form.is_valid())
         self.assertIn('name', form.errors)
 
     def test_non_image_upload_is_rejected(self):
         not_an_image = SimpleUploadedFile('game.png', b'not an image', content_type='image/png')
-        form = AddBoardGameForm({'name': 'Catan'}, {'image': not_an_image}, user=self.alice)
+        form = ProfileBoardgameForm(
+            {'name': 'Catan', 'is_known': 'on'}, {'picture': not_an_image}, user=self.alice,
+        )
         self.assertFalse(form.is_valid())
-        self.assertIn('image', form.errors)
+        self.assertIn('picture', form.errors)
 
 
-class BoardGameImageFormTest(BoardGameTestCase):
-    def test_only_exposes_the_image(self):
-        # Renaming would let a user dodge the one-entry-per-game rule, so the
-        # edit form must not offer the game or the owner.
-        self.assertEqual(list(BoardGameImageForm().fields), ['image'])
+class ProfileBoardgameEditFormTest(ProfileBoardgameTestCase):
+    def test_cannot_rename_the_game(self):
+        # Renaming would let a user dodge the one-row-per-game rule.
+        self.assertEqual(
+            sorted(ProfileBoardgameEditForm().fields), ['is_known', 'is_owned', 'picture'],
+        )
+
+    def test_unticking_both_flags_is_rejected(self):
+        game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')
+        form = ProfileBoardgameEditForm({}, instance=game)
+        self.assertFalse(form.is_valid())
+        self.assertTrue(form.non_field_errors())
 
 
-class ProfileFormWithoutKnownBoardgamesTest(BoardGameTestCase):
-    def test_known_boardgames_text_field_is_gone(self):
+class ProfileFormWithoutKnownBoardgamesTest(ProfileBoardgameTestCase):
+    def test_known_boardgames_text_box_is_gone_from_the_form(self):
         self.assertNotIn('known_boardgames', ProfileForm().fields)
 
 
-class AddBoardGameViewTest(BoardGameTestCase):
+class AddProfileBoardgameViewTest(ProfileBoardgameTestCase):
     url_name = 'accounts:boardgame_add'
 
     def test_requires_login(self):
@@ -160,39 +177,38 @@ class AddBoardGameViewTest(BoardGameTestCase):
         response = self.client.get(reverse(self.url_name))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'accounts/boardgame_add.html')
-        self.assertIsInstance(response.context['form'], AddBoardGameForm)
+        self.assertIsInstance(response.context['form'], ProfileBoardgameForm)
 
     def test_valid_post_adds_game_and_redirects_to_profile(self):
         self.client.force_login(self.alice)
         response = self.client.post(
-            reverse(self.url_name), {'name': 'Catan', 'image': make_image()},
+            reverse(self.url_name),
+            {'name': 'Catan', 'is_known': 'on', 'is_owned': 'on', 'picture': make_image()},
         )
         self.assertRedirects(response, reverse('accounts:profile'))
-        entry = UserBoardGame.objects.get(user=self.alice)
-        self.assertEqual(entry.boardgame.name, 'Catan')
-        self.assertTrue(entry.image)
+        game = ProfileBoardgame.objects.get(user=self.alice)
+        self.assertEqual(game.name, 'Catan')
+        self.assertTrue(game.is_owned)
+        self.assertTrue(game.picture)
 
     def test_duplicate_post_rerenders_with_error_and_saves_nothing(self):
-        catan = BoardGame.objects.create(name='Catan')
-        UserBoardGame.objects.create(user=self.alice, boardgame=catan)
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan')
         self.client.force_login(self.alice)
         response = self.client.post(
-            reverse(self.url_name), {'name': 'CATAN', 'image': make_image()},
+            reverse(self.url_name), {'name': 'CATAN', 'is_known': 'on', 'picture': make_image()},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn('name', response.context['form'].errors)
-        self.assertEqual(UserBoardGame.objects.filter(user=self.alice).count(), 1)
+        self.assertEqual(ProfileBoardgame.objects.filter(user=self.alice).count(), 1)
 
 
-class EditBoardGameViewTest(BoardGameTestCase):
+class EditProfileBoardgameViewTest(ProfileBoardgameTestCase):
     def setUp(self):
         super().setUp()
-        self.entry = UserBoardGame.objects.create(
-            user=self.alice,
-            boardgame=BoardGame.objects.create(name='Catan'),
-            image=make_image('old.png'),
+        self.game = ProfileBoardgame.objects.create(
+            user=self.alice, name='Catan', picture=make_image('old.png'),
         )
-        self.url = reverse('accounts:boardgame_edit', args=[self.entry.pk])
+        self.url = reverse('accounts:boardgame_edit', args=[self.game.pk])
 
     def test_requires_login(self):
         response = self.client.get(self.url)
@@ -204,41 +220,49 @@ class EditBoardGameViewTest(BoardGameTestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'accounts/boardgame_edit.html')
-        self.assertIsInstance(response.context['form'], BoardGameImageForm)
+        self.assertIsInstance(response.context['form'], ProfileBoardgameEditForm)
 
-    def test_cannot_edit_another_users_entry(self):
+    def test_cannot_edit_another_users_game(self):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.get(self.url).status_code, 404)
-        self.assertEqual(
-            self.client.post(self.url, {'image': make_image('hijack.png')}).status_code, 404,
-        )
+        response = self.client.post(self.url, {'is_owned': 'on', 'picture': make_image('hijack.png')})
+        self.assertEqual(response.status_code, 404)
+
+    def test_updates_flags(self):
+        self.client.force_login(self.alice)
+        response = self.client.post(self.url, {'is_owned': 'on'})
+        self.assertRedirects(response, reverse('accounts:profile'))
+        self.game.refresh_from_db()
+        self.assertFalse(self.game.is_known)
+        self.assertTrue(self.game.is_owned)
 
     def test_replacing_picture_deletes_the_old_file(self):
-        old_name = self.entry.image.name
+        old_name = self.game.picture.name
         self.client.force_login(self.alice)
-        response = self.client.post(self.url, {'image': make_image('new.png', color='green')})
+        response = self.client.post(
+            self.url, {'is_known': 'on', 'picture': make_image('new.png', color='green')},
+        )
         self.assertRedirects(response, reverse('accounts:profile'))
-        self.entry.refresh_from_db()
-        self.assertIn('new', self.entry.image.name)
+        self.game.refresh_from_db()
+        self.assertIn('new', self.game.picture.name)
         self.assertFalse(default_storage.exists(old_name))
 
     def test_clearing_picture_deletes_the_file(self):
-        old_name = self.entry.image.name
+        old_name = self.game.picture.name
         self.client.force_login(self.alice)
-        self.client.post(self.url, {'image-clear': 'on'})
-        self.entry.refresh_from_db()
-        self.assertFalse(self.entry.image)
+        self.client.post(self.url, {'is_known': 'on', 'picture-clear': 'on'})
+        self.game.refresh_from_db()
+        self.assertFalse(self.game.picture)
         self.assertFalse(default_storage.exists(old_name))
 
 
-class DeleteBoardGameViewTest(BoardGameTestCase):
+class DeleteProfileBoardgameViewTest(ProfileBoardgameTestCase):
     def setUp(self):
         super().setUp()
-        self.catan = BoardGame.objects.create(name='Catan')
-        self.entry = UserBoardGame.objects.create(
-            user=self.alice, boardgame=self.catan, image=make_image(),
+        self.game = ProfileBoardgame.objects.create(
+            user=self.alice, name='Catan', picture=make_image(),
         )
-        self.url = reverse('accounts:boardgame_delete', args=[self.entry.pk])
+        self.url = reverse('accounts:boardgame_delete', args=[self.game.pk])
 
     def test_requires_login(self):
         response = self.client.post(self.url)
@@ -248,51 +272,48 @@ class DeleteBoardGameViewTest(BoardGameTestCase):
     def test_rejects_get(self):
         self.client.force_login(self.alice)
         self.assertEqual(self.client.get(self.url).status_code, 405)
-        self.assertTrue(UserBoardGame.objects.filter(pk=self.entry.pk).exists())
+        self.assertTrue(ProfileBoardgame.objects.filter(pk=self.game.pk).exists())
 
-    def test_cannot_delete_another_users_entry(self):
+    def test_cannot_delete_another_users_game(self):
         self.client.force_login(self.bob)
         self.assertEqual(self.client.post(self.url).status_code, 404)
-        self.assertTrue(UserBoardGame.objects.filter(pk=self.entry.pk).exists())
+        self.assertTrue(ProfileBoardgame.objects.filter(pk=self.game.pk).exists())
 
-    def test_removes_entry_and_its_file_but_keeps_the_game(self):
-        image_name = self.entry.image.name
+    def test_removes_game_and_its_picture_file(self):
+        picture_name = self.game.picture.name
         self.client.force_login(self.alice)
         response = self.client.post(self.url)
         self.assertRedirects(response, reverse('accounts:profile'))
-        self.assertFalse(UserBoardGame.objects.filter(pk=self.entry.pk).exists())
-        self.assertFalse(default_storage.exists(image_name))
-        self.assertTrue(BoardGame.objects.filter(pk=self.catan.pk).exists())
+        self.assertFalse(ProfileBoardgame.objects.filter(pk=self.game.pk).exists())
+        self.assertFalse(default_storage.exists(picture_name))
 
 
-class ProfileShowsBoardGamesTest(BoardGameTestCase):
-    def test_lists_own_entries_with_picture_or_placeholder(self):
-        with_picture = UserBoardGame.objects.create(
-            user=self.alice, boardgame=BoardGame.objects.create(name='Catan'), image=make_image(),
+class ProfileShowsBoardgamesTest(ProfileBoardgameTestCase):
+    def test_lists_own_games_with_picture_or_placeholder(self):
+        with_picture = ProfileBoardgame.objects.create(
+            user=self.alice, name='Catan', picture=make_image(),
         )
-        UserBoardGame.objects.create(user=self.alice, boardgame=BoardGame.objects.create(name='Azul'))
+        ProfileBoardgame.objects.create(user=self.alice, name='Azul')
         self.client.force_login(self.alice)
         response = self.client.get(reverse('accounts:profile'))
 
-        self.assertEqual(len(response.context['boardgame_entries']), 2)
-        self.assertContains(response, with_picture.image.url)
+        self.assertEqual(len(response.context['profile_boardgames']), 2)
+        self.assertContains(response, with_picture.picture.url)
         self.assertContains(response, 'Catan')
         self.assertContains(response, 'Azul')
         self.assertContains(response, 'game-placeholder')
 
     def test_does_not_show_other_users_games(self):
-        UserBoardGame.objects.create(user=self.bob, boardgame=BoardGame.objects.create(name='Gloomhaven'))
+        ProfileBoardgame.objects.create(user=self.bob, name='Gloomhaven')
         self.client.force_login(self.alice)
         response = self.client.get(reverse('accounts:profile'))
-        self.assertEqual(len(response.context['boardgame_entries']), 0)
+        self.assertEqual(len(response.context['profile_boardgames']), 0)
         self.assertNotContains(response, 'Gloomhaven')
 
     def test_links_to_add_edit_and_delete(self):
-        entry = UserBoardGame.objects.create(
-            user=self.alice, boardgame=BoardGame.objects.create(name='Catan'),
-        )
+        game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')
         self.client.force_login(self.alice)
         response = self.client.get(reverse('accounts:profile'))
         self.assertContains(response, reverse('accounts:boardgame_add'))
-        self.assertContains(response, reverse('accounts:boardgame_edit', args=[entry.pk]))
-        self.assertContains(response, reverse('accounts:boardgame_delete', args=[entry.pk]))
+        self.assertContains(response, reverse('accounts:boardgame_edit', args=[game.pk]))
+        self.assertContains(response, reverse('accounts:boardgame_delete', args=[game.pk]))

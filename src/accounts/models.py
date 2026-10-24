@@ -47,6 +47,7 @@ class User(AbstractUser):
         blank=True,
         help_text="Upload a profile picture for your account.",
     )
+    friends = models.ManyToManyField('self', blank=True)
 
     def get_display_name(self):
         """Return display_name if set, otherwise fall back to username."""
@@ -58,3 +59,19 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class FriendRequest(models.Model):
+    """A pending friend request. Deleted once accepted or declined."""
+
+    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_friend_requests')
+    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_friend_requests')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['from_user', 'to_user'], name='unique_friend_request'),
+        ]
+
+    def __str__(self):
+        return f'{self.from_user} -> {self.to_user}'

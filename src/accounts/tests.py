@@ -9,7 +9,7 @@ from django.urls import reverse
 from PIL import Image
 
 from .forms import ProfileForm
-from .models import User
+from .models import FriendRequest, User
 
 
 class ProfilePictureAcceptanceTest(TestCase):
@@ -266,3 +266,44 @@ class HomeViewTest(TestCase):
         response = self.client.get(reverse('accounts:home'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'accounts/home.html')
+
+
+class FriendTest(TestCase):
+    def setUp(self):
+        self.alice = User.objects.create_user(username='alice', password='secret123')
+        self.bob = User.objects.create_user(username='bob', password='secret123')
+        self.client.force_login(self.alice)
+
+    def test_request_then_accept_makes_both_friends(self):
+        self.client.post(reverse('accounts:send_friend_request', args=['bob']))
+        self.assertFalse(self.alice.friends.filter(pk=self.bob.pk).exists())
+
+        self.client.force_login(self.bob)
+        self.client.post(reverse('accounts:accept_friend_request', args=['alice']))
+        self.assertTrue(self.alice.friends.filter(pk=self.bob.pk).exists())
+        self.assertTrue(self.bob.friends.filter(pk=self.alice.pk).exists())
+        self.assertFalse(FriendRequest.objects.exists())
+
+    def test_decline_removes_request_without_friendship(self):
+        FriendRequest.objects.create(from_user=self.bob, to_user=self.alice)
+        self.client.post(reverse('accounts:decline_friend_request', args=['bob']))
+        self.assertFalse(FriendRequest.objects.exists())
+        self.assertFalse(self.alice.friends.exists())
+
+    def test_cannot_accept_request_sent_to_someone_else(self):
+        carol = User.objects.create_user(username='carol', password='secret123')
+        FriendRequest.objects.create(from_user=self.bob, to_user=carol)
+        response = self.client.post(reverse('accounts:accept_friend_request', args=['bob']))
+        self.assertEqual(response.status_code, 404)
+
+    def test_cannot_add_yourself(self):
+        self.client.post(reverse('accounts:send_friend_request', args=['alice']))
+        self.assertFalse(FriendRequest.objects.exists())
+
+    def test_remove_friend_and_list(self):
+        self.alice.friends.add(self.bob)
+        response = self.client.get(reverse('accounts:friends'))
+        self.assertContains(response, 'bob')
+
+        self.client.post(reverse('accounts:remove_friend', args=['bob']))
+        self.assertFalse(self.bob.friends.filter(pk=self.alice.pk).exists())

@@ -94,7 +94,11 @@ def profile_editing_view(request):
     else:
         form = ProfileForm(instance=request.user)
 
-    return render(request, 'accounts/profile_editing.html', {'form': form})
+    context = {
+        'form': form,
+        'profile_boardgames': request.user.profile_boardgames.all(),
+    }
+    return render(request, 'accounts/profile_editing.html', context)
 
 
 @login_required
@@ -123,7 +127,7 @@ def boardgame_add_view(request):
         if form.is_valid():
             game = form.save()
             messages.success(request, f'{game.name} was added to your profile.')
-            return redirect('accounts:profile')
+            return redirect('accounts:profile_editing')
     else:
         form = ProfileBoardgameForm(user=request.user)
 
@@ -142,7 +146,7 @@ def boardgame_edit_view(request, pk):
         if form.is_valid():
             form.save()
             messages.success(request, f'{game.name} was updated.')
-            return redirect('accounts:profile')
+            return redirect('accounts:profile_editing')
     else:
         form = ProfileBoardgameEditForm(instance=game)
 
@@ -157,4 +161,4 @@ def boardgame_delete_view(request, pk):
     game.picture.delete(save=False)
     game.delete()
     messages.success(request, f'{game.name} was removed from your profile.')
-    return redirect('accounts:profile')
+    return redirect('accounts:profile_editing')

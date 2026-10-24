@@ -231,7 +231,7 @@ class AddProfileBoardgameViewTest(ProfileBoardgameTestCase):
             reverse(self.url_name),
             {'name': 'Catan', 'is_known': 'on', 'is_owned': 'on', 'picture': make_image()},
         )
-        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertRedirects(response, reverse('accounts:profile_editing'))
         game = ProfileBoardgame.objects.get(user=self.alice)
         self.assertEqual(game.name, 'Catan')
         self.assertTrue(game.is_owned)
@@ -277,7 +277,7 @@ class EditProfileBoardgameViewTest(ProfileBoardgameTestCase):
     def test_updates_flags(self):
         self.client.force_login(self.alice)
         response = self.client.post(self.url, {'is_owned': 'on'})
-        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertRedirects(response, reverse('accounts:profile_editing'))
         self.game.refresh_from_db()
         self.assertFalse(self.game.is_known)
         self.assertTrue(self.game.is_owned)
@@ -288,7 +288,7 @@ class EditProfileBoardgameViewTest(ProfileBoardgameTestCase):
         response = self.client.post(
             self.url, {'is_known': 'on', 'picture': make_image('new.png', color='green')},
         )
-        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertRedirects(response, reverse('accounts:profile_editing'))
         self.game.refresh_from_db()
         self.assertIn('new', self.game.picture.name)
         self.assertFalse(default_storage.exists(old_name))
@@ -329,7 +329,7 @@ class DeleteProfileBoardgameViewTest(ProfileBoardgameTestCase):
         picture_name = self.game.picture.name
         self.client.force_login(self.alice)
         response = self.client.post(self.url)
-        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertRedirects(response, reverse('accounts:profile_editing'))
         self.assertFalse(ProfileBoardgame.objects.filter(pk=self.game.pk).exists())
         self.assertFalse(default_storage.exists(picture_name))
 
@@ -356,10 +356,35 @@ class ProfileShowsBoardgamesTest(ProfileBoardgameTestCase):
         self.assertEqual(len(response.context['profile_boardgames']), 0)
         self.assertNotContains(response, 'Gloomhaven')
 
-    def test_links_to_add_edit_and_delete(self):
+    def test_profile_is_display_only(self):
         game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')
         self.client.force_login(self.alice)
         response = self.client.get(reverse('accounts:profile'))
+        self.assertNotContains(response, reverse('accounts:boardgame_add'))
+        self.assertNotContains(response, reverse('accounts:boardgame_edit', args=[game.pk]))
+        self.assertNotContains(response, reverse('accounts:boardgame_delete', args=[game.pk]))
+
+
+class EditProfileManagesBoardgamesTest(ProfileBoardgameTestCase):
+    def test_lists_own_games_with_add_edit_and_delete(self):
+        game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')
+        ProfileBoardgame.objects.create(user=self.bob, name='Gloomhaven')
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('accounts:profile_editing'))
+
+        self.assertEqual(list(response.context['profile_boardgames']), [game])
+        self.assertNotContains(response, 'Gloomhaven')
         self.assertContains(response, reverse('accounts:boardgame_add'))
         self.assertContains(response, reverse('accounts:boardgame_edit', args=[game.pk]))
         self.assertContains(response, reverse('accounts:boardgame_delete', args=[game.pk]))
+
+    def test_add_link_shows_with_no_games(self):
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('accounts:profile_editing'))
+        self.assertContains(response, reverse('accounts:boardgame_add'))
+
+    def test_add_and_edit_pages_link_back_to_edit_profile(self):
+        game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')
+        self.client.force_login(self.alice)
+        for url in (reverse('accounts:boardgame_add'), reverse('accounts:boardgame_edit', args=[game.pk])):
+            self.assertContains(self.client.get(url), reverse('accounts:profile_editing'))

@@ -30,6 +30,25 @@
     .empty a { font-style: normal; }
     .profile-section .tag-list span { margin: 0 6px 6px 0; }
     .count { font-weight: normal; color: #8c959f; }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .section-head a { font-size: .9em; color: #2b6cb0; }
+    .game-grid { list-style: none; padding: 0; margin: 0; display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+    .game-card { border: 1px solid #d0d7de; border-radius: 10px; overflow: hidden; background: #fff;
+        display: flex; flex-direction: column; }
+    .game-picture { aspect-ratio: 1 / 1; background: #e2ebf5; display: flex; align-items: center; justify-content: center; }
+    .game-picture img { width: 100%; height: 100%; object-fit: cover; }
+    .game-placeholder { font-size: 40px; font-weight: bold; color: #2b6cb0; text-transform: uppercase; }
+    .game-info { padding: 8px 10px 4px; flex: 1; }
+    .game-name { display: block; font-weight: bold; word-break: break-word; }
+    .game-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .game-badge { font-size: .75em; padding: 2px 8px; border-radius: 10px; background: #eef; color: #333; }
+    .game-badge.owned { background: #d4edda; color: #155724; }
+    .game-actions { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px 10px; font-size: .85em; }
+    .game-actions a { color: #2b6cb0; }
+    .game-actions form { margin: 0; }
+    .game-actions button { margin: 0; padding: 0; background: none; color: #b00020; font-size: 1em; text-decoration: underline; }
+    .game-actions button:hover { background: none; color: #7a0016; }
     @media (max-width: 480px) {
         .profile-top { flex-direction: column; align-items: flex-start; }
         .detail-list { grid-template-columns: 1fr; gap: 2px; }
@@ -90,6 +109,45 @@
                     {% if profile_user.favorite_genre %}{{ profile_user.get_favorite_genre_display }}{% else %}<span class="empty">Not set</span>{% endif %}
                 </dd>
             </dl>
+        </section>
+
+        <section class="profile-section">
+            <div class="section-head">
+                <h2>Boardgames {% if profile_boardgames %}<span class="count">({{ profile_boardgames|length }})</span>{% endif %}</h2>
+                <a href="{% url 'accounts:boardgame_add' %}">+ Add a game</a>
+            </div>
+            {% if profile_boardgames %}
+                <ul class="game-grid">
+                    {% for game in profile_boardgames %}
+                        <li class="game-card">
+                            <div class="game-picture">
+                                {% if game.picture %}
+                                    <img src="{{ game.picture.url }}" alt="{{ game.name }}">
+                                {% else %}
+                                    <span class="game-placeholder" aria-hidden="true">{{ game.name|first }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="game-info">
+                                <span class="game-name">{{ game.name }}</span>
+                                <div class="game-badges">
+                                    {% if game.is_known %}<span class="game-badge">Known</span>{% endif %}
+                                    {% if game.is_owned %}<span class="game-badge owned">Owned</span>{% endif %}
+                                </div>
+                            </div>
+                            <div class="game-actions">
+                                <a href="{% url 'accounts:boardgame_edit' game.pk %}">Edit</a>
+                                <form method="post" action="{% url 'accounts:boardgame_delete' game.pk %}"
+                                      onsubmit="return confirm('Remove {{ game.name|escapejs }} from your profile?');">
+                                    {% csrf_token %}
+                                    <button type="submit">Remove</button>
+                                </form>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty">No games added yet. <a href="{% url 'accounts:boardgame_add' %}">Add a game you know or own</a></p>
+            {% endif %}
         </section>
 
         <section class="profile-section">

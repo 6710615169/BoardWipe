@@ -129,7 +129,7 @@ class ProfileBoardgameFormTest(ProfileBoardgameTestCase):
     def test_neither_known_nor_owned_is_rejected(self):
         form = ProfileBoardgameForm({'name': 'Catan'}, user=self.alice)
         self.assertFalse(form.is_valid())
-        self.assertTrue(form.non_field_errors())
+        self.assertIn('is_known', form.errors)
 
     def test_blank_name_is_rejected(self):
         form = ProfileBoardgameForm({'name': '   ', 'is_known': 'on'}, user=self.alice)
@@ -156,7 +156,9 @@ class ProfileBoardgameEditFormTest(ProfileBoardgameTestCase):
         game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')
         form = ProfileBoardgameEditForm({}, instance=game)
         self.assertFalse(form.is_valid())
-        self.assertTrue(form.non_field_errors())
+        self.assertIn('is_known', form.errors)
+        # Only the readable message, not Django's raw "Constraint ... is violated".
+        self.assertFalse(form.non_field_errors())
 
 
 class ProfileFormWithoutKnownBoardgamesTest(ProfileBoardgameTestCase):

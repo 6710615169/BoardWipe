@@ -35,6 +35,13 @@ class ProfilePictureAcceptanceTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'accounts/profile.html')
 
+    def test_profile_page_has_edit_profile_link(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Edit profile')
+        self.assertContains(response, reverse('accounts:profile_settings'))
+
     @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
     def test_post_with_simple_uploaded_file_returns_302_and_saves_picture(self):
         self.client.force_login(self.user)

@@ -1,0 +1,30 @@
+{% extends "accounts/base.html" %}
+{% block content %}
+<h2>Find Players</h2>
+
+<form method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Name or username">
+
+  <select name="genre">
+    <option value="">Any genre</option>
+    {% for value, label in genre_choices %}
+      <option value="{{ value }}" {% if genre == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+
+  <input type="text" name="known" value="{{ known }}" placeholder="Boardgame they know">
+  <input type="text" name="favorite" value="{{ favorite }}" placeholder="Favorite boardgame">
+
+  <button type="submit" class="btn">Search</button>
+</form>
+
+{% for u in users_found %}
+  <div>
+    {% if u.profile_picture %}<img src="{{ u.profile_picture.url }}" alt="" width="50">{% endif %}
+    <a href="{% url 'accounts:profile_detail' u.username %}">{{ u.get_display_name }}</a>
+    {% if u.favorite_genre %}<small>({{ u.get_favorite_genre_display }})</small>{% endif %}
+  </div>
+{% empty %}
+  <p>No profiles found.</p>
+{% endfor %}
+{% endblock %}

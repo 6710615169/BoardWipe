@@ -6,9 +6,46 @@ from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from .models import User
 
 from .forms import ProfileForm, RegisterForm
 
+@login_required
+def profile_search_view(request):
+    q = request.GET.get('q', '').strip()
+    genre = request.GET.get('genre', '')
+    known = request.GET.get('known', '').strip()
+    favorite = request.GET.get('favorite', '').strip()
+
+    users = User.objects.filter(is_active=True).exclude(pk=request.user.pk)
+
+    if q:
+        users = users.filter(
+            Q(username__icontains=q) |
+            Q(display_name__icontains=q) |
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q)
+        )
+    if genre:
+        users = users.filter(favorite_genre=genre)
+    if known:
+        users = users.filter(known_boardgames__icontains=known)
+    if favorite:
+        users = users.filter(favorite_boardgame__icontains=favorite)
+
+    return render(request, 'accounts/profile_search.html', {
+        'users_found': users.order_by('username'),
+        'genre_choices': User.GENRE_CHOICES,
+        'q': q, 'genre': genre, 'known': known, 'favorite': favorite,
+    })
+
+
+@login_required
+def profile_detail_view(request, username):
+    profile_user = get_object_or_404(User, username=username, is_active=True)
+    return render(request, 'accounts/profile_detail.html', {'profile_user': profile_user})
 
 def home(request):
     return render(request, 'accounts/home.html')

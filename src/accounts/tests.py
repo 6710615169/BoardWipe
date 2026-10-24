@@ -7,10 +7,55 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
+from .models import User
 
 from .forms import ProfileForm
 from .models import User
 
+class ProfileSearchTests(TestCase):
+    def setUp(self):
+        self.me = User.objects.create_user('me', password='pass12345')
+        self.alice = User.objects.create_user(
+            'alice', password='x', favorite_genre='strategy',
+            known_boardgames='Catan, Chess')
+        self.bob = User.objects.create_user(
+            'bob', password='x', favorite_genre='party',
+            known_boardgames='Codenames')
+        self.dave = User.objects.create_user(
+            'dave', password='x', favorite_genre='strategy', is_active=False)
+        self.client.login(username='me', password='pass12345')
+
+    def test_search_by_name(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'q': 'ali'})
+        self.assertContains(r, 'alice')
+        self.assertNotContains(r, 'bob')
+
+    def test_filter_by_genre(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'genre': 'party'})
+        self.assertContains(r, 'bob')
+        self.assertNotContains(r, 'alice')
+
+    def test_filter_by_known_boardgame(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'known': 'chess'})
+        self.assertContains(r, 'alice')
+        self.assertNotContains(r, 'bob')
+
+    def test_deactivated_profile_not_in_search(self):
+        r = self.client.get(reverse('accounts:profile_search'))
+        self.assertNotContains(r, 'dave')
+
+    def test_deactivated_profile_detail_is_404(self):
+        r = self.client.get(reverse('accounts:profile_detail', args=['dave']))
+        self.assertEqual(r.status_code, 404)
+
+    def test_profile_detail_loads(self):
+        r = self.client.get(reverse('accounts:profile_detail', args=['alice']))
+        self.assertEqual(r.status_code, 200)
+
+    def test_search_requires_login(self):
+        self.client.logout()
+        r = self.client.get(reverse('accounts:profile_search'))
+        self.assertEqual(r.status_code, 302)
 
 class ProfilePictureAcceptanceTest(TestCase):
     def setUp(self):

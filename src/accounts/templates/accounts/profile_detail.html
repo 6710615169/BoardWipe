@@ -1,0 +1,23 @@
+{% extends "accounts/base.html" %}
+{% block content %}
+<h2>{{ profile_user.get_display_name }}</h2>
+<a href="{% url 'accounts:profile_search' %}" class="btn">Back to search</a>
+{% if profile_user.profile_picture %}
+  <img src="{{ profile_user.profile_picture.url }}" alt="" width="150">
+{% endif %}
+
+<p>{{ profile_user.bio }}</p>
+<p>Favorite genre: {{ profile_user.get_favorite_genre_display|default:"Not set" }}</p>
+<p>Favorite boardgame: {{ profile_user.favorite_boardgame|default:"Not set" }}</p>
+
+<p>Known boardgames:</p>
+<ul>
+  {% for game in profile_user.known_boardgames_list %}
+    <li>{{ game }}</li>
+  {% empty %}
+    <li>None listed</li>
+  {% endfor %}
+</ul>
+
+<a href="{% url 'accounts:profile_search' %}" class="btn">Back to search</a>
+{% endblock %}

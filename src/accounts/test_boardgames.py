@@ -4,7 +4,6 @@ from importlib import import_module
 from io import BytesIO
 
 from django.apps import apps as django_apps
-from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
@@ -216,7 +215,7 @@ class AddProfileBoardgameViewTest(ProfileBoardgameTestCase):
     def test_requires_login(self):
         response = self.client.get(reverse(self.url_name))
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+        self.assertTrue(response.url.startswith(reverse('accounts:login')))
 
     def test_get_renders_form(self):
         self.client.force_login(self.alice)
@@ -259,7 +258,7 @@ class EditProfileBoardgameViewTest(ProfileBoardgameTestCase):
     def test_requires_login(self):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+        self.assertTrue(response.url.startswith(reverse('accounts:login')))
 
     def test_get_renders_form(self):
         self.client.force_login(self.alice)
@@ -313,7 +312,7 @@ class DeleteProfileBoardgameViewTest(ProfileBoardgameTestCase):
     def test_requires_login(self):
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+        self.assertTrue(response.url.startswith(reverse('accounts:login')))
 
     def test_rejects_get(self):
         self.client.force_login(self.alice)

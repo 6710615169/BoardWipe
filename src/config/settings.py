@@ -44,7 +44,7 @@ AUTH_USER_MODEL = 'accounts.User'
 
 # Where @login_required sends anonymous users. Given as a URL name so it keeps
 # working if the accounts URLs are mounted under a different prefix.
-LOGIN_URL = '/login/'
+LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'accounts:profile'
 
 MIDDLEWARE = [

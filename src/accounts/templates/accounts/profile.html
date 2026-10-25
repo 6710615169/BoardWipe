@@ -92,11 +92,11 @@
         </section>
 
         <section class="profile-section">
-            <h2>Boardgames {% if profile_boardgames %}<span class="count">({{ profile_boardgames|length }})</span>{% endif %}</h2>
+            <h2>Boardgames I know {% if profile_boardgames %}<span class="count">({{ profile_boardgames|length }})</span>{% endif %}</h2>
             {% if profile_boardgames %}
                 {% include "accounts/_boardgame_cards.html" %}
             {% else %}
-                <p class="empty">No games added yet. <a href="{% url 'accounts:profile_editing' %}#boardgames">Add the games you know or own</a></p>
+                <p class="empty">No games listed yet. <a href="{% url 'accounts:profile_editing' %}#boardgames">Add the games you know</a></p>
             {% endif %}
         </section>
                 <section class="profile-section">

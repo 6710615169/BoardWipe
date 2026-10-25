@@ -123,7 +123,7 @@ def profile_view(request):
     user = request.user
     context = {
         'profile_user': user,
-        'profile_boardgames': user.profile_boardgames.filter(is_known=True),
+        'profile_boardgames': user.profile_boardgames.all(),
     }
     return render(request, 'accounts/profile.html', context)
 

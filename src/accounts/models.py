@@ -37,10 +37,6 @@ class User(AbstractUser):
         blank=True,
         help_text="The genre of boardgame you like best.",
     )
-    known_boardgames = models.TextField(
-        blank=True,
-        help_text="Comma-separated list of boardgames you know how to play, e.g. 'Catan, Chess, Codenames'.",
-    )
     bio = models.TextField(
         # Django enforces max_length only in form/model validation, not at the database level.
         max_length=500,
@@ -71,10 +67,6 @@ class User(AbstractUser):
     def get_display_name(self):
         """Return display_name if set, otherwise fall back to username."""
         return self.display_name or self.username
-
-    def known_boardgames_list(self):
-        """Return known_boardgames as a clean list of names."""
-        return [g.strip() for g in self.known_boardgames.split(',') if g.strip()]
 
     def __str__(self):
         return self.username
@@ -127,3 +119,4 @@ class ProfileBoardgame(models.Model):
 
     def __str__(self):
         return f'{self.user} - {self.name}'
+

@@ -1,9 +1,7 @@
 import shutil
 import tempfile
-from importlib import import_module
 from io import BytesIO
 
-from django.apps import apps as django_apps
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
@@ -84,10 +82,6 @@ class ProfileBoardgameModelTest(ProfileBoardgameTestCase):
         self.alice.delete()
         self.assertFalse(ProfileBoardgame.objects.exists())
 
-    def test_old_known_boardgames_text_field_is_kept(self):
-        # Teammates still use it; it is retired only after a data migration.
-        self.assertEqual(User._meta.get_field('known_boardgames').__class__.__name__, 'TextField')
-
 
 class ProfileBoardgameFormTest(ProfileBoardgameTestCase):
     def test_creates_game_with_picture_and_flags(self):
@@ -160,48 +154,6 @@ class ProfileBoardgameEditFormTest(ProfileBoardgameTestCase):
         self.assertIn('is_known', form.errors)
         # Only the readable message, not Django's raw "Constraint ... is violated".
         self.assertFalse(form.non_field_errors())
-
-
-class CopyKnownBoardgamesMigrationTest(ProfileBoardgameTestCase):
-    """The 0005 data migration, run against the current models."""
-
-    def run_migration(self):
-        migration = import_module('accounts.migrations.0005_copy_known_boardgames')
-        migration.copy_known_boardgames(django_apps, None)
-
-    def test_copies_each_name_as_a_known_game(self):
-        self.alice.known_boardgames = 'Catan,  Ticket   to Ride , Chess'
-        self.alice.save()
-        self.run_migration()
-        games = ProfileBoardgame.objects.filter(user=self.alice)
-        self.assertEqual(
-            sorted(games.values_list('name', flat=True)), ['Catan', 'Chess', 'Ticket to Ride'],
-        )
-        self.assertTrue(all(g.is_known and not g.is_owned for g in games))
-
-    def test_skips_blanks_and_case_duplicates(self):
-        self.alice.known_boardgames = 'Catan, , catan,CATAN ,'
-        self.alice.save()
-        self.run_migration()
-        self.assertEqual(ProfileBoardgame.objects.filter(user=self.alice).count(), 1)
-
-    def test_skips_games_already_on_the_profile_so_rerunning_is_safe(self):
-        ProfileBoardgame.objects.create(user=self.alice, name='Catan', is_owned=True)
-        self.alice.known_boardgames = 'catan, Azul'
-        self.alice.save()
-        self.run_migration()
-        self.run_migration()
-        self.assertEqual(ProfileBoardgame.objects.filter(user=self.alice).count(), 2)
-        # The existing row keeps its own flags.
-        self.assertTrue(ProfileBoardgame.objects.get(user=self.alice, name='Catan').is_owned)
-
-    def test_keeps_the_old_text_and_ignores_users_without_games(self):
-        self.alice.known_boardgames = 'Catan'
-        self.alice.save()
-        self.run_migration()
-        self.alice.refresh_from_db()
-        self.assertEqual(self.alice.known_boardgames, 'Catan')
-        self.assertFalse(ProfileBoardgame.objects.filter(user=self.bob).exists())
 
 
 class ProfileFormWithoutKnownBoardgamesTest(ProfileBoardgameTestCase):
@@ -343,13 +295,13 @@ class ProfileShowsBoardgamesTest(ProfileBoardgameTestCase):
         response = self.client.get(reverse('accounts:profile'))
 
         self.assertEqual(len(response.context['profile_boardgames']), 2)
-        self.assertContains(response, 'Boardgames I know')
+        self.assertContains(response, 'My boardgames')
         self.assertContains(response, with_picture.picture.url)
         self.assertContains(response, 'Catan')
         self.assertContains(response, 'Azul')
         self.assertContains(response, 'game-placeholder')
 
-    def test_lists_only_games_the_user_knows(self):
+    def test_lists_known_and_owned_games(self):
         ProfileBoardgame.objects.create(user=self.alice, name='Catan', is_known=True)
         ProfileBoardgame.objects.create(
             user=self.alice, name='Gloomhaven', is_known=False, is_owned=True,
@@ -357,9 +309,10 @@ class ProfileShowsBoardgamesTest(ProfileBoardgameTestCase):
         self.client.force_login(self.alice)
         response = self.client.get(reverse('accounts:profile'))
 
-        self.assertEqual(len(response.context['profile_boardgames']), 1)
+        self.assertEqual(len(response.context['profile_boardgames']), 2)
         self.assertContains(response, 'Catan')
-        self.assertNotContains(response, 'Gloomhaven')
+        self.assertContains(response, 'Gloomhaven')
+        self.assertContains(response, 'game-badge owned')
 
     def test_does_not_show_other_users_games(self):
         ProfileBoardgame.objects.create(user=self.bob, name='Gloomhaven')
@@ -368,7 +321,7 @@ class ProfileShowsBoardgamesTest(ProfileBoardgameTestCase):
         self.assertEqual(len(response.context['profile_boardgames']), 0)
         self.assertNotContains(response, 'Gloomhaven')
 
-    def test_unticking_known_hides_the_game_from_the_profile(self):
+    def test_unticking_known_keeps_an_owned_game_on_the_profile(self):
         game = ProfileBoardgame.objects.create(
             user=self.alice, name='Catan', is_known=True, is_owned=True,
         )
@@ -378,7 +331,8 @@ class ProfileShowsBoardgamesTest(ProfileBoardgameTestCase):
             {'is_owned': 'on'},
         )
         response = self.client.get(reverse('accounts:profile'))
-        self.assertEqual(len(response.context['profile_boardgames']), 0)
+        self.assertEqual(list(response.context['profile_boardgames']), [game])
+        self.assertNotContains(response, '<span class="game-badge">Known</span>', html=False)
 
     def test_profile_is_display_only(self):
         game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')

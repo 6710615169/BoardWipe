@@ -49,6 +49,7 @@ class User(AbstractUser):
         validators=[validate_image_size],
         help_text="Upload a profile picture for your account (max 5 MB).",
     )
+    friends = models.ManyToManyField('self', blank=True)
 
     class Meta(AbstractUser.Meta):
         constraints = [
@@ -72,6 +73,20 @@ class User(AbstractUser):
         return self.username
 
 
+class FriendRequest(models.Model):
+    """A pending friend request. Deleted once accepted or declined."""
+
+    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_friend_requests')
+    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_friend_requests')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['from_user', 'to_user'], name='unique_friend_request'),
+        ]
+
+    def __str__(self):
+        return f'{self.from_user} -> {self.to_user}'
 class ProfileBoardgame(models.Model):
     """A boardgame on a user's profile: one row per game, with their own picture."""
 

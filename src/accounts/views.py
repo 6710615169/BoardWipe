@@ -10,8 +10,8 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from .models import User
 
+from .models import ProfileBoardgame, FriendRequest, User
 from .forms import ProfileBoardgameEditForm, ProfileBoardgameForm, ProfileForm, RegisterForm
-from .models import ProfileBoardgame
 
 @login_required
 def profile_search_view(request):
@@ -171,6 +171,60 @@ def profile_settings_view(request):
 
 
 @login_required
+def friends_view(request):
+    """List the user's friends and their pending friend requests."""
+    context = {
+        'friends': request.user.friends.all(),
+        'incoming_requests': request.user.received_friend_requests.select_related('from_user'),
+        'outgoing_requests': request.user.sent_friend_requests.select_related('to_user'),
+    }
+    return render(request, 'accounts/friends.html', context)
+
+
+@login_required
+@require_POST
+def send_friend_request(request, username):
+    other = get_object_or_404(User, username=username)
+
+    if other == request.user:
+        messages.error(request, 'You cannot add yourself as a friend.')
+    elif request.user.friends.filter(pk=other.pk).exists():
+        messages.info(request, f'You are already friends with {other.get_display_name()}.')
+    elif FriendRequest.objects.filter(from_user=other, to_user=request.user).delete()[0]:
+        # They already asked us, so sending one back accepts it.
+        request.user.friends.add(other)
+        messages.success(request, f'You are now friends with {other.get_display_name()}.')
+    else:
+        FriendRequest.objects.get_or_create(from_user=request.user, to_user=other)
+        messages.success(request, f'Friend request sent to {other.get_display_name()}.')
+
+    return redirect('accounts:friends')
+
+
+@login_required
+@require_POST
+def accept_friend_request(request, username):
+    # Scoping by to_user means only the recipient can accept.
+    friend_request = get_object_or_404(
+        FriendRequest, from_user__username=username, to_user=request.user
+    )
+    request.user.friends.add(friend_request.from_user)
+    friend_request.delete()
+    messages.success(request, f'You are now friends with {friend_request.from_user.get_display_name()}.')
+    return redirect('accounts:friends')
+
+
+@login_required
+@require_POST
+def decline_friend_request(request, username):
+    friend_request = get_object_or_404(
+        FriendRequest, from_user__username=username, to_user=request.user
+    )
+    friend_request.delete()
+    messages.success(request, 'Friend request declined.')
+    return redirect('accounts:friends')
+  
+@login_required
 def boardgame_add_view(request):
     """Add a boardgame, with an optional picture, to the logged-in user's profile."""
     if request.method == 'POST':
@@ -204,6 +258,15 @@ def boardgame_edit_view(request, pk):
     return render(request, 'accounts/boardgame_edit.html', {'form': form, 'game': game})
 
 
+@login_required
+@require_POST
+def remove_friend(request, username):
+    other = get_object_or_404(User, username=username)
+    request.user.friends.remove(other)
+    messages.success(request, f'{other.get_display_name()} was removed from your friends.')
+    return redirect('accounts:friends')
+  
+  
 @login_required
 @require_POST
 def boardgame_delete_view(request, pk):

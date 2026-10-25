@@ -6,6 +6,12 @@
   <img src="{{ profile_user.profile_picture.url }}" alt="" width="150">
 {% endif %}
 
+<form method="POST"
+      action="{% url 'accounts:send_friend_request' profile_user.username %}">
+    {% csrf_token %}
+    <button type="submit">Send friend request</button>
+</form>
+
 <p>{{ profile_user.bio }}</p>
 <p>Favorite genre: {{ profile_user.get_favorite_genre_display|default:"Not set" }}</p>
 <p>Favorite boardgame: {{ profile_user.favorite_boardgame|default:"Not set" }}</p>

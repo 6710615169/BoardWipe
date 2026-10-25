@@ -1,0 +1,41 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Friends{% endblock %}
+
+{% block content %}
+<h1>Friends</h1>
+
+<h2>Friend requests</h2>
+{% for friend_request in incoming_requests %}
+    <div>
+        {{ friend_request.from_user.get_display_name }} ({{ friend_request.from_user.username }})
+        <form method="post" action="{% url 'accounts:accept_friend_request' friend_request.from_user.username %}" style="display:inline">
+            {% csrf_token %}<button type="submit">Accept</button>
+        </form>
+        <form method="post" action="{% url 'accounts:decline_friend_request' friend_request.from_user.username %}" style="display:inline">
+            {% csrf_token %}<button type="submit">Decline</button>
+        </form>
+    </div>
+{% empty %}
+    <p>No friend requests.</p>
+{% endfor %}
+
+<h2>My friends</h2>
+{% for friend in friends %}
+    <div>
+        {{ friend.get_display_name }} ({{ friend.username }})
+        <form method="post" action="{% url 'accounts:remove_friend' friend.username %}" style="display:inline">
+            {% csrf_token %}<button type="submit">Remove</button>
+        </form>
+    </div>
+{% empty %}
+    <p>You have no friends yet.</p>
+{% endfor %}
+
+{% if outgoing_requests %}
+    <h2>Sent requests</h2>
+    {% for friend_request in outgoing_requests %}
+        <p>{{ friend_request.to_user.get_display_name }} ({{ friend_request.to_user.username }}) - pending</p>
+    {% endfor %}
+{% endif %}
+{% endblock %}

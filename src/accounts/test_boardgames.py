@@ -344,10 +344,23 @@ class ProfileShowsBoardgamesTest(ProfileBoardgameTestCase):
         response = self.client.get(reverse('accounts:profile'))
 
         self.assertEqual(len(response.context['profile_boardgames']), 2)
+        self.assertContains(response, 'Boardgames I know')
         self.assertContains(response, with_picture.picture.url)
         self.assertContains(response, 'Catan')
         self.assertContains(response, 'Azul')
         self.assertContains(response, 'game-placeholder')
+
+    def test_lists_only_games_the_user_knows(self):
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan', is_known=True)
+        ProfileBoardgame.objects.create(
+            user=self.alice, name='Gloomhaven', is_known=False, is_owned=True,
+        )
+        self.client.force_login(self.alice)
+        response = self.client.get(reverse('accounts:profile'))
+
+        self.assertEqual(len(response.context['profile_boardgames']), 1)
+        self.assertContains(response, 'Catan')
+        self.assertNotContains(response, 'Gloomhaven')
 
     def test_does_not_show_other_users_games(self):
         ProfileBoardgame.objects.create(user=self.bob, name='Gloomhaven')
@@ -355,6 +368,18 @@ class ProfileShowsBoardgamesTest(ProfileBoardgameTestCase):
         response = self.client.get(reverse('accounts:profile'))
         self.assertEqual(len(response.context['profile_boardgames']), 0)
         self.assertNotContains(response, 'Gloomhaven')
+
+    def test_unticking_known_hides_the_game_from_the_profile(self):
+        game = ProfileBoardgame.objects.create(
+            user=self.alice, name='Catan', is_known=True, is_owned=True,
+        )
+        self.client.force_login(self.alice)
+        self.client.post(
+            reverse('accounts:boardgame_edit', args=[game.pk]),
+            {'is_owned': 'on'},
+        )
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(len(response.context['profile_boardgames']), 0)
 
     def test_profile_is_display_only(self):
         game = ProfileBoardgame.objects.create(user=self.alice, name='Catan')
@@ -373,6 +398,7 @@ class EditProfileManagesBoardgamesTest(ProfileBoardgameTestCase):
         response = self.client.get(reverse('accounts:profile_editing'))
 
         self.assertEqual(list(response.context['profile_boardgames']), [game])
+        self.assertContains(response, 'Your boardgames')
         self.assertNotContains(response, 'Gloomhaven')
         self.assertContains(response, reverse('accounts:boardgame_add'))
         self.assertContains(response, reverse('accounts:boardgame_edit', args=[game.pk]))

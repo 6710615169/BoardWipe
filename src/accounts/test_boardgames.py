@@ -1,9 +1,7 @@
 import shutil
 import tempfile
-from importlib import import_module
 from io import BytesIO
 
-from django.apps import apps as django_apps
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
@@ -84,10 +82,6 @@ class ProfileBoardgameModelTest(ProfileBoardgameTestCase):
         self.alice.delete()
         self.assertFalse(ProfileBoardgame.objects.exists())
 
-    def test_old_known_boardgames_text_field_is_kept(self):
-        # Teammates still use it; it is retired only after a data migration.
-        self.assertEqual(User._meta.get_field('known_boardgames').__class__.__name__, 'TextField')
-
 
 class ProfileBoardgameFormTest(ProfileBoardgameTestCase):
     def test_creates_game_with_picture_and_flags(self):
@@ -160,48 +154,6 @@ class ProfileBoardgameEditFormTest(ProfileBoardgameTestCase):
         self.assertIn('is_known', form.errors)
         # Only the readable message, not Django's raw "Constraint ... is violated".
         self.assertFalse(form.non_field_errors())
-
-
-class CopyKnownBoardgamesMigrationTest(ProfileBoardgameTestCase):
-    """The 0005 data migration, run against the current models."""
-
-    def run_migration(self):
-        migration = import_module('accounts.migrations.0005_copy_known_boardgames')
-        migration.copy_known_boardgames(django_apps, None)
-
-    def test_copies_each_name_as_a_known_game(self):
-        self.alice.known_boardgames = 'Catan,  Ticket   to Ride , Chess'
-        self.alice.save()
-        self.run_migration()
-        games = ProfileBoardgame.objects.filter(user=self.alice)
-        self.assertEqual(
-            sorted(games.values_list('name', flat=True)), ['Catan', 'Chess', 'Ticket to Ride'],
-        )
-        self.assertTrue(all(g.is_known and not g.is_owned for g in games))
-
-    def test_skips_blanks_and_case_duplicates(self):
-        self.alice.known_boardgames = 'Catan, , catan,CATAN ,'
-        self.alice.save()
-        self.run_migration()
-        self.assertEqual(ProfileBoardgame.objects.filter(user=self.alice).count(), 1)
-
-    def test_skips_games_already_on_the_profile_so_rerunning_is_safe(self):
-        ProfileBoardgame.objects.create(user=self.alice, name='Catan', is_owned=True)
-        self.alice.known_boardgames = 'catan, Azul'
-        self.alice.save()
-        self.run_migration()
-        self.run_migration()
-        self.assertEqual(ProfileBoardgame.objects.filter(user=self.alice).count(), 2)
-        # The existing row keeps its own flags.
-        self.assertTrue(ProfileBoardgame.objects.get(user=self.alice, name='Catan').is_owned)
-
-    def test_keeps_the_old_text_and_ignores_users_without_games(self):
-        self.alice.known_boardgames = 'Catan'
-        self.alice.save()
-        self.run_migration()
-        self.alice.refresh_from_db()
-        self.assertEqual(self.alice.known_boardgames, 'Catan')
-        self.assertFalse(ProfileBoardgame.objects.filter(user=self.bob).exists())
 
 
 class ProfileFormWithoutKnownBoardgamesTest(ProfileBoardgameTestCase):

@@ -42,10 +42,9 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = 'accounts.User'
 
-# The login view itself ships with feat/auth (US-01), which serves it at /login/.
-# Without this, @login_required falls back to Django's default /accounts/login/,
-# which is contrib.auth's LoginView and has no template on either branch.
-LOGIN_URL = '/login/'
+# Where @login_required sends anonymous users. Given as a URL name so it keeps
+# working if the accounts URLs are mounted under a different prefix.
+LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'accounts:profile'
 
 MIDDLEWARE = [

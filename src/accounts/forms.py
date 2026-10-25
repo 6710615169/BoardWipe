@@ -57,6 +57,30 @@ class ProfileForm(forms.ModelForm):
             'bio': forms.Textarea(attrs={'rows': 4}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Remember the stored picture now: by the time save() runs, the form
+        # has already pointed the instance at the new upload (or at '' when
+        # "Clear" was ticked), so the old name would be lost.
+        self._old_picture_name = self.instance.profile_picture.name if self.instance.pk else ''
+
+    def save(self, commit=True):
+        user = super().save(commit=commit)
+        if commit:
+            self._delete_replaced_picture()
+        return user
+
+    def _delete_replaced_picture(self):
+        """Remove the previous picture file once it has been replaced or cleared.
+
+        With save(commit=False) the caller owns the save, so cleanup is skipped.
+        """
+        old_name = self._old_picture_name
+        picture = self.instance.profile_picture
+        if old_name and old_name != picture.name:
+            picture.storage.delete(old_name)
+        self._old_picture_name = picture.name
+
     def clean_email(self):
         """Blank is allowed here; the profile form does not require an email."""
         return validate_email_is_unused(self.cleaned_data.get('email', ''), exclude_pk=self.instance.pk)

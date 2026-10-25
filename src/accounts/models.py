@@ -4,6 +4,8 @@ from django.db.models import Q
 from django.db.models.functions import Lower
 from django.contrib.auth.models import AbstractUser
 
+from .validators import validate_image_size
+
 
 class User(AbstractUser):
     """Custom user with extra profile fields for the boardgame community."""
@@ -48,8 +50,23 @@ class User(AbstractUser):
     profile_picture = models.ImageField(
         upload_to='profile_pictures/',
         blank=True,
-        help_text="Upload a profile picture for your account.",
+        validators=[validate_image_size],
+        help_text="Upload a profile picture for your account (max 5 MB).",
     )
+
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            # Case-insensitive uniqueness that ignores blank emails, because
+            # many users may legitimately have no email. Backs up the
+            # form-level check in accounts.forms.validate_email_is_unused,
+            # and covers the admin, createsuperuser and concurrent signups.
+            models.UniqueConstraint(
+                Lower('email'),
+                condition=~models.Q(email=''),
+                name='accounts_user_email_ci_unique_nonblank',
+                violation_error_message='A user with that email already exists.',
+            ),
+        ]
 
     def get_display_name(self):
         """Return display_name if set, otherwise fall back to username."""

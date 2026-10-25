@@ -34,12 +34,6 @@
     .form-actions button { margin-top: 0; font-weight: bold; }
     .btn-secondary { padding: 10px 20px; border: 1px solid #d0d7de; border-radius: 4px; color: #222; text-decoration: none; }
     .btn-secondary:hover, .btn-secondary:focus { background: #f3f4f6; }
-    .section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 16px; }
-    .section-head h2 { margin: 0; }
-    .btn-add { padding: 6px 14px; border-radius: 6px; background: #2b6cb0; color: #fff; text-decoration: none;
-        font-weight: bold; font-size: .9em; }
-    .btn-add:hover, .btn-add:focus { background: #245a94; }
-    #boardgames .game-grid { margin-top: 12px; }
     @media (max-width: 480px) {
         .field-row { grid-template-columns: 1fr; }
         .form-actions { justify-content: stretch; }
@@ -149,9 +143,14 @@
             {% endwith %}
         </div>
 
-        <p class="section-hint field">
-            Games you know are listed in <a href="#boardgames">Your boardgames</a> below, and shown on your profile as Boardgames I know.
-        </p>
+        {% with field=form.known_boardgames %}
+        <div class="field{% if field.errors %} has-error{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            <small>Separate games with commas, e.g. Catan, Chess, Codenames.</small>
+            {% if field.errors %}{{ field.errors }}{% endif %}
+        </div>
+        {% endwith %}
     </section>
 
     {# ---------- About ---------- #}
@@ -176,20 +175,6 @@
         <button type="submit">Save changes</button>
     </div>
 </form>
-
-{# Kept outside the profile form: each Remove button is its own form, and forms cannot nest. #}
-<section class="edit-section" id="boardgames">
-    <div class="section-head">
-        <h2>Your boardgames {% if profile_boardgames %}<span class="optional">({{ profile_boardgames|length }})</span>{% endif %}</h2>
-        <a class="btn-add" href="{% url 'accounts:boardgame_add' %}">+ Add a game</a>
-    </div>
-    <p class="section-hint">Tick “I know this game” so it appears on your profile. Save profile changes above before leaving this page.</p>
-    {% if profile_boardgames %}
-        {% include "accounts/_boardgame_cards.html" with manage=True %}
-    {% else %}
-        <p class="section-hint"><em>No games listed yet.</em></p>
-    {% endif %}
-</section>
 
 <script>
 (function () {

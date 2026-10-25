@@ -1,7 +1,14 @@
 import tempfile
 from io import BytesIO
 
-from django.conf import settings
+from django.contrib.auth.forms import PasswordChangeForm
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+from PIL import Image
+import tempfile
+from io import BytesIO
+
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
@@ -9,8 +16,75 @@ from django.urls import reverse
 from PIL import Image
 
 from .forms import ProfileForm
-from .models import FriendRequest, User
+from .models import ProfileBoardgame, FriendRequest, User
 
+
+class ProfileSearchTests(TestCase):
+    def setUp(self):
+        self.me = User.objects.create_user('me', password='pass12345')
+        self.alice = User.objects.create_user('alice', password='x', favorite_genre='strategy')
+        self.bob = User.objects.create_user('bob', password='x', favorite_genre='party')
+        self.dave = User.objects.create_user(
+            'dave', password='x', favorite_genre='strategy', is_active=False)
+
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan', is_known=True, is_owned=True)
+        ProfileBoardgame.objects.create(user=self.alice, name='Gloomhaven', is_known=False, is_owned=True)
+        ProfileBoardgame.objects.create(user=self.alice, name='Chess', is_known=True)
+        ProfileBoardgame.objects.create(user=self.bob, name='Codenames', is_known=True)
+        ProfileBoardgame.objects.create(user=self.bob, name='Uno', is_known=False, is_owned=True)
+
+        self.client.login(username='me', password='pass12345')
+
+    def test_search_by_name(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'q': 'ali'})
+        self.assertContains(r, 'alice')
+        self.assertNotContains(r, 'bob')
+
+    def test_filter_by_genre(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'genre': 'party'})
+        self.assertContains(r, 'bob')
+        self.assertNotContains(r, 'alice')
+
+    def test_filter_by_known_boardgame(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'known': 'chess'})
+        self.assertContains(r, 'alice')
+        self.assertNotContains(r, 'bob')
+
+    def test_filter_by_owned_boardgame(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
+        self.assertContains(r, 'alice')
+        self.assertNotContains(r, 'bob')
+
+    def test_known_filter_ignores_owned_only_games(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'known': 'gloom'})
+        self.assertNotContains(r, 'alice')
+
+    def test_owned_boardgames_shown_in_results(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
+        self.assertContains(r, 'Gloomhaven')
+
+    def test_deactivated_profile_not_in_search(self):
+        r = self.client.get(reverse('accounts:profile_search'))
+        self.assertNotContains(r, 'dave')
+
+    def test_deactivated_profile_detail_is_404(self):
+        r = self.client.get(reverse('accounts:profile_detail', args=['dave']))
+        self.assertEqual(r.status_code, 404)
+
+    def test_profile_detail_loads(self):
+        r = self.client.get(reverse('accounts:profile_detail', args=['alice']))
+        self.assertEqual(r.status_code, 200)
+
+    def test_profile_detail_shows_boardgames_with_tags(self):
+        r = self.client.get(reverse('accounts:profile_detail', args=['alice']))
+        self.assertContains(r, 'Gloomhaven')
+        self.assertContains(r, 'Owned')
+        self.assertContains(r, 'Known')
+
+    def test_search_requires_login(self):
+        self.client.logout()
+        r = self.client.get(reverse('accounts:profile_search'))
+        self.assertEqual(r.status_code, 302)
 
 class ProfilePictureAcceptanceTest(TestCase):
     def setUp(self):
@@ -22,18 +96,57 @@ class ProfilePictureAcceptanceTest(TestCase):
         )
 
     def test_anonymous_get_redirects_to_login(self):
-        # The login view arrives with feat/auth (US-01), so this branch can only
-        # assert where we send the user, not that the page renders.
-        response = self.client.get(reverse('accounts:profile'))
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
-        self.assertIn('next=' + reverse('accounts:profile'), response.url)
+        profile_url = reverse('accounts:profile')
+        response = self.client.get(profile_url)
+        # assertRedirects also fetches the target, so this proves the login
+        # page really renders and not just that we redirected somewhere.
+        self.assertRedirects(response, reverse('accounts:login') + '?next=' + profile_url)
 
     def test_authenticated_get_returns_200(self):
         self.client.force_login(self.user)
         response = self.client.get(reverse('accounts:profile'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'accounts/profile.html')
+
+    def test_profile_page_has_edit_profile_link(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Edit profile')
+        self.assertContains(response, reverse('accounts:profile_editing'))
+
+    def test_profile_page_is_read_only(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('accounts:profile'), {'display_name': 'Hacked'})
+        self.assertEqual(response.status_code, 405)
+
+    def test_editing_page_requires_login(self):
+        editing_url = reverse('accounts:profile_editing')
+        response = self.client.get(editing_url)
+        self.assertRedirects(response, reverse('accounts:login') + '?next=' + editing_url)
+
+    def test_editing_page_renders_form_with_current_values(self):
+        self.user.favorite_boardgame = 'Azul'
+        self.user.save()
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:profile_editing'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/profile_editing.html')
+        self.assertIsInstance(response.context['form'], ProfileForm)
+        self.assertContains(response, 'value="Azul"')
+
+    def test_invalid_edit_rerenders_with_errors_and_does_not_save(self):
+        User.objects.create_user(username='bob', email='bob@example.com', password='secret123')
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('accounts:profile_editing'),
+            {'display_name': 'Alice', 'email': 'bob@example.com'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/profile_editing.html')
+        self.assertIn('email', response.context['form'].errors)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.display_name, '')
 
     @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
     def test_post_with_simple_uploaded_file_returns_302_and_saves_picture(self):
@@ -51,12 +164,11 @@ class ProfilePictureAcceptanceTest(TestCase):
         )
 
         response = self.client.post(
-            reverse('accounts:profile'),
+            reverse('accounts:profile_editing'),
             {
                 'display_name': 'Alice',
                 'favorite_boardgame': 'Catan',
                 'favorite_genre': 'strategy',
-                'known_boardgames': 'Catan, Ticket to Ride',
                 'bio': 'Hello world',
                 'profile_picture': uploaded,
             },
@@ -217,9 +329,9 @@ class ProfileSettingsViewTest(TestCase):
         self.user = User.objects.create_user(username='alice', password='secret123')
 
     def test_anonymous_get_redirects_to_login(self):
-        response = self.client.get(reverse('accounts:profile_settings'))
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+        settings_url = reverse('accounts:profile_settings')
+        response = self.client.get(settings_url)
+        self.assertRedirects(response, reverse('accounts:login') + '?next=' + settings_url)
 
     def test_authenticated_get_renders_password_form(self):
         self.client.force_login(self.user)

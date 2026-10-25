@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.shortcuts import redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from .forms import ProfileForm, RegisterForm
 
@@ -65,30 +65,35 @@ def logout_view(request):
 
 
 @login_required
+@require_GET
 def profile_view(request):
-    """
-    Show the logged-in user's profile and let them edit it in place.
-
-    GET  -> render the profile with a bound form showing current values.
-    POST -> validate and save changes, then redisplay the (now updated) profile.
-    """
+    """Show the logged-in user's profile. Editing lives on profile_editing_view."""
     user = request.user
+    context = {
+        'profile_user': user,
+        'known_boardgames_list': user.known_boardgames_list(),
+    }
+    return render(request, 'accounts/profile.html', context)
 
+
+@login_required
+def profile_editing_view(request):
+    """
+    Let the logged-in user edit their own profile.
+
+    GET  -> render the form filled with the current values.
+    POST -> validate and save, then send the user back to their profile.
+    """
     if request.method == 'POST':
-        form = ProfileForm(request.POST, request.FILES, instance=user)
+        form = ProfileForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Your profile has been updated.')
             return redirect('accounts:profile')
     else:
-        form = ProfileForm(instance=user)
+        form = ProfileForm(instance=request.user)
 
-    context = {
-        'form': form,
-        'profile_user': user,
-        'known_boardgames_list': user.known_boardgames_list(),
-    }
-    return render(request, 'accounts/profile.html', context)
+    return render(request, 'accounts/profile_editing.html', {'form': form})
 
 
 @login_required

@@ -1,7 +1,6 @@
 import tempfile
 from io import BytesIO
 
-from django.conf import settings
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
@@ -22,18 +21,57 @@ class ProfilePictureAcceptanceTest(TestCase):
         )
 
     def test_anonymous_get_redirects_to_login(self):
-        # The login view arrives with feat/auth (US-01), so this branch can only
-        # assert where we send the user, not that the page renders.
-        response = self.client.get(reverse('accounts:profile'))
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
-        self.assertIn('next=' + reverse('accounts:profile'), response.url)
+        profile_url = reverse('accounts:profile')
+        response = self.client.get(profile_url)
+        # assertRedirects also fetches the target, so this proves the login
+        # page really renders and not just that we redirected somewhere.
+        self.assertRedirects(response, reverse('accounts:login') + '?next=' + profile_url)
 
     def test_authenticated_get_returns_200(self):
         self.client.force_login(self.user)
         response = self.client.get(reverse('accounts:profile'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'accounts/profile.html')
+
+    def test_profile_page_has_edit_profile_link(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Edit profile')
+        self.assertContains(response, reverse('accounts:profile_editing'))
+
+    def test_profile_page_is_read_only(self):
+        self.client.force_login(self.user)
+        response = self.client.post(reverse('accounts:profile'), {'display_name': 'Hacked'})
+        self.assertEqual(response.status_code, 405)
+
+    def test_editing_page_requires_login(self):
+        editing_url = reverse('accounts:profile_editing')
+        response = self.client.get(editing_url)
+        self.assertRedirects(response, reverse('accounts:login') + '?next=' + editing_url)
+
+    def test_editing_page_renders_form_with_current_values(self):
+        self.user.favorite_boardgame = 'Azul'
+        self.user.save()
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('accounts:profile_editing'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/profile_editing.html')
+        self.assertIsInstance(response.context['form'], ProfileForm)
+        self.assertContains(response, 'value="Azul"')
+
+    def test_invalid_edit_rerenders_with_errors_and_does_not_save(self):
+        User.objects.create_user(username='bob', email='bob@example.com', password='secret123')
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse('accounts:profile_editing'),
+            {'display_name': 'Alice', 'email': 'bob@example.com'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'accounts/profile_editing.html')
+        self.assertIn('email', response.context['form'].errors)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.display_name, '')
 
     @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
     def test_post_with_simple_uploaded_file_returns_302_and_saves_picture(self):
@@ -51,7 +89,7 @@ class ProfilePictureAcceptanceTest(TestCase):
         )
 
         response = self.client.post(
-            reverse('accounts:profile'),
+            reverse('accounts:profile_editing'),
             {
                 'display_name': 'Alice',
                 'favorite_boardgame': 'Catan',
@@ -217,9 +255,9 @@ class ProfileSettingsViewTest(TestCase):
         self.user = User.objects.create_user(username='alice', password='secret123')
 
     def test_anonymous_get_redirects_to_login(self):
-        response = self.client.get(reverse('accounts:profile_settings'))
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(settings.LOGIN_URL))
+        settings_url = reverse('accounts:profile_settings')
+        response = self.client.get(settings_url)
+        self.assertRedirects(response, reverse('accounts:login') + '?next=' + settings_url)
 
     def test_authenticated_get_renders_password_form(self):
         self.client.force_login(self.user)

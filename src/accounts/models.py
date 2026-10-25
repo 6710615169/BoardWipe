@@ -1,4 +1,6 @@
+from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.db.models.functions import Lower
 from django.contrib.auth.models import AbstractUser
 
@@ -76,3 +78,52 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class ProfileBoardgame(models.Model):
+    """A boardgame on a user's profile: one row per game, with their own picture."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profile_boardgames',
+    )
+    name = models.CharField(
+        max_length=150,
+        help_text="The boardgame's name.",
+    )
+    picture = models.ImageField(
+        upload_to='boardgame_pictures/',
+        blank=True,
+        help_text="Your own picture of this boardgame.",
+    )
+    is_known = models.BooleanField(
+        default=True,
+        help_text="You know how to play this boardgame.",
+    )
+    is_owned = models.BooleanField(
+        default=False,
+        help_text="You own a copy of this boardgame.",
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-added_at']
+        constraints = [
+            # One row per game per user, so the same game cannot appear twice
+            # with different pictures.
+            models.UniqueConstraint('user', Lower('name'), name='unique_profile_boardgame_name_ci'),
+            # A row that is neither known nor owned has no reason to exist.
+            models.CheckConstraint(
+                condition=Q(is_known=True) | Q(is_owned=True),
+                name='profile_boardgame_known_or_owned',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        # Trim and collapse inner whitespace so " catan " collides with "Catan".
+        self.name = ' '.join(self.name.split())
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.user} - {self.name}'

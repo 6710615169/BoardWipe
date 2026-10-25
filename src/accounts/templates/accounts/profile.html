@@ -28,7 +28,6 @@
     .detail-list dd { margin: 0; word-break: break-word; }
     .empty { color: #8c959f; font-style: italic; }
     .empty a { font-style: normal; }
-    .profile-section .tag-list span { margin: 0 6px 6px 0; }
     .count { font-weight: normal; color: #8c959f; }
     @media (max-width: 480px) {
         .profile-top { flex-direction: column; align-items: flex-start; }
@@ -93,15 +92,11 @@
         </section>
 
         <section class="profile-section">
-            <h2>Known boardgames {% if known_boardgames_list %}<span class="count">({{ known_boardgames_list|length }})</span>{% endif %}</h2>
-            {% if known_boardgames_list %}
-                <div class="tag-list">
-                    {% for game in known_boardgames_list %}
-                        <span>{{ game }}</span>
-                    {% endfor %}
-                </div>
+            <h2>Boardgames I know {% if profile_boardgames %}<span class="count">({{ profile_boardgames|length }})</span>{% endif %}</h2>
+            {% if profile_boardgames %}
+                {% include "accounts/_boardgame_cards.html" %}
             {% else %}
-                <p class="empty">No games listed yet. <a href="{% url 'accounts:profile_editing' %}">Add the games you know</a></p>
+                <p class="empty">No games listed yet. <a href="{% url 'accounts:profile_editing' %}#boardgames">Add the games you know</a></p>
             {% endif %}
         </section>
     </div>

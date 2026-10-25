@@ -1,0 +1,12 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Edit {{ game.name }}{% endblock %}
+
+{% block content %}
+<div class="edit-header">
+    <h1>Edit {{ game.name }}</h1>
+    <a href="{% url 'accounts:profile_editing' %}">&larr; Back to edit profile</a>
+</div>
+
+{% include "accounts/_boardgame_form.html" with submit_label="Save changes" %}
+{% endblock %}

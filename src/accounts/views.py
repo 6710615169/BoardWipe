@@ -225,7 +225,6 @@ def decline_friend_request(request, username):
     return redirect('accounts:friends')
   
 @login_required
-@require_POST
 def boardgame_add_view(request):
     """Add a boardgame, with an optional picture, to the logged-in user's profile."""
     if request.method == 'POST':

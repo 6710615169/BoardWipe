@@ -151,7 +151,7 @@
 
 
         <p class="section-hint field">
-            Games you know or own are listed in <a href="#boardgames">My boardgames</a> below.
+            Games you know are listed in <a href="#boardgames">Your boardgames</a> below, and shown on your profile as Boardgames I know.
         </p>
 
     </section>
@@ -182,14 +182,14 @@
 {# Kept outside the profile form: each Remove button is its own form, and forms cannot nest. #}
 <section class="edit-section" id="boardgames">
     <div class="section-head">
-        <h2>My boardgames {% if profile_boardgames %}<span class="optional">({{ profile_boardgames|length }})</span>{% endif %}</h2>
+        <h2>Your boardgames {% if profile_boardgames %}<span class="optional">({{ profile_boardgames|length }})</span>{% endif %}</h2>
         <a class="btn-add" href="{% url 'accounts:boardgame_add' %}">+ Add a game</a>
     </div>
-    <p class="section-hint">Each game has its own picture. Save your profile changes above before leaving this page.</p>
+    <p class="section-hint">Tick “I know this game” so it appears on your profile. Save profile changes above before leaving this page.</p>
     {% if profile_boardgames %}
         {% include "accounts/_boardgame_cards.html" with manage=True %}
     {% else %}
-        <p class="section-hint"><em>No games added yet.</em></p>
+        <p class="section-hint"><em>No games listed yet.</em></p>
     {% endif %}
 </section>
 

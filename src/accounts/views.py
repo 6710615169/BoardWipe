@@ -20,8 +20,9 @@ def profile_search_view(request):
     known = request.GET.get('known', '').strip()
     favorite = request.GET.get('favorite', '').strip()
     owned = request.GET.get('owned', '').strip()
+
     users = User.objects.filter(is_active=True).exclude(pk=request.user.pk)
-    
+
     if q:
         users = users.filter(
             Q(username__icontains=q) |
@@ -32,13 +33,22 @@ def profile_search_view(request):
     if genre:
         users = users.filter(favorite_genre=genre)
     if known:
-        users = users.filter(known_boardgames__icontains=known)
+        users = users.filter(
+            profile_boardgames__is_known=True,
+            profile_boardgames__name__icontains=known,
+        )
     if favorite:
         users = users.filter(favorite_boardgame__icontains=favorite)
     if owned:
-        users = users.filter(owned_boardgames__icontains=owned)
+        users = users.filter(
+            profile_boardgames__is_owned=True,
+            profile_boardgames__name__icontains=owned,
+        )
+
+    users = users.distinct().order_by('username').prefetch_related('profile_boardgames')
+
     return render(request, 'accounts/profile_search.html', {
-        'users_found': users.order_by('username'),
+        'users_found': users,
         'genre_choices': User.GENRE_CHOICES,
         'q': q, 'genre': genre, 'known': known, 'favorite': favorite, 'owned': owned,
     })
@@ -47,7 +57,10 @@ def profile_search_view(request):
 @login_required
 def profile_detail_view(request, username):
     profile_user = get_object_or_404(User, username=username, is_active=True)
-    return render(request, 'accounts/profile_detail.html', {'profile_user': profile_user})
+    return render(request, 'accounts/profile_detail.html', {
+        'profile_user': profile_user,
+        'profile_boardgames': profile_user.profile_boardgames.all(),
+    })
 
 def home(request):
     return render(request, 'accounts/home.html')

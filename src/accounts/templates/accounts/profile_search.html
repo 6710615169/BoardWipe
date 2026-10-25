@@ -23,9 +23,9 @@
     {% if u.profile_picture %}<img src="{{ u.profile_picture.url }}" alt="" width="50">{% endif %}
     <a href="{% url 'accounts:profile_detail' u.username %}">{{ u.get_display_name }}</a>
     {% if u.favorite_genre %}<small>({{ u.get_favorite_genre_display }})</small>{% endif %}
-    {% if u.owned_boardgames_list %}
-      <br><small>Owns: {{ u.owned_boardgames_list|join:", " }}</small>
-    {% endif %}
+    {% for g in u.profile_boardgames.all %}
+  <small>{{ g.name }}{% if g.is_known %} [Known]{% endif %}{% if g.is_owned %} [Owned]{% endif %}</small>
+{% endfor %}
   </div>
 {% empty %}
   <p>No profiles found.</p>

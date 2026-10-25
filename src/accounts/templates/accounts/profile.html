@@ -99,18 +99,6 @@
                 <p class="empty">No games added yet. <a href="{% url 'accounts:profile_editing' %}#boardgames">Add the games you know or own</a></p>
             {% endif %}
         </section>
-                <section class="profile-section">
-            <h2>Owned boardgames {% if profile_user.owned_boardgames_list %}<span class="count">({{ profile_user.owned_boardgames_list|length }})</span>{% endif %}</h2>
-            {% if profile_user.owned_boardgames_list %}
-                <div class="tag-list">
-                    {% for game in profile_user.owned_boardgames_list %}
-                        <span>{{ game }}</span>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="empty">No games listed yet. <a href="{% url 'accounts:profile_editing' %}">Add the games you own</a></p>
-            {% endif %}
-        </section>
     </div>
 </article>
 {% endblock %}

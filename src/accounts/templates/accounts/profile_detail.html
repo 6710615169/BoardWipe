@@ -10,21 +10,12 @@
 <p>Favorite genre: {{ profile_user.get_favorite_genre_display|default:"Not set" }}</p>
 <p>Favorite boardgame: {{ profile_user.favorite_boardgame|default:"Not set" }}</p>
 
-<p>Known boardgames:</p>
-<ul>
-  {% for game in profile_user.known_boardgames_list %}
-    <li>{{ game }}</li>
-  {% empty %}
-    <li>None listed</li>
-  {% endfor %}
-</ul>
-<p>Owned boardgames:</p>
-<ul>
-  {% for game in profile_user.owned_boardgames_list %}
-    <li>{{ game }}</li>
-  {% empty %}
-    <li>None listed</li>
-  {% endfor %}
-</ul>
+<h3>Boardgames {% if profile_boardgames %}({{ profile_boardgames|length }}){% endif %}</h3>
+{% if profile_boardgames %}
+  {% include "accounts/_boardgame_cards.html" %}
+{% else %}
+  <p>No games added yet.</p>
+{% endif %}
+
 <a href="{% url 'accounts:profile_search' %}" class="btn">Back to search</a>
 {% endblock %}

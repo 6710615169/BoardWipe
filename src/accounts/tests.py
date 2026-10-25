@@ -6,30 +6,35 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
-from .models import User
+import tempfile
+from io import BytesIO
+
+from django.contrib.auth.forms import PasswordChangeForm
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
+from PIL import Image
 
 from .forms import ProfileForm
-from .models import User
+from .models import ProfileBoardgame, User
+
 
 class ProfileSearchTests(TestCase):
     def setUp(self):
         self.me = User.objects.create_user('me', password='pass12345')
-        self.alice = User.objects.create_user(
-            'alice', password='x', favorite_genre='strategy',
-            known_boardgames='Catan, Chess',owned_boardgames='Catan, Gloomhaven')
-        self.bob = User.objects.create_user(
-            'bob', password='x', favorite_genre='party',
-            known_boardgames='Codenames',owned_boardgames='Uno')
+        self.alice = User.objects.create_user('alice', password='x', favorite_genre='strategy')
+        self.bob = User.objects.create_user('bob', password='x', favorite_genre='party')
         self.dave = User.objects.create_user(
             'dave', password='x', favorite_genre='strategy', is_active=False)
+
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan', is_known=True, is_owned=True)
+        ProfileBoardgame.objects.create(user=self.alice, name='Gloomhaven', is_known=False, is_owned=True)
+        ProfileBoardgame.objects.create(user=self.alice, name='Chess', is_known=True)
+        ProfileBoardgame.objects.create(user=self.bob, name='Codenames', is_known=True)
+        ProfileBoardgame.objects.create(user=self.bob, name='Uno', is_known=False, is_owned=True)
+
         self.client.login(username='me', password='pass12345')
-    def test_owned_boardgames_shown_in_results(self):
-        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
-        self.assertContains(r, 'Gloomhaven')
-    def test_filter_by_owned_boardgame(self):
-        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
-        self.assertContains(r, 'alice')
-        self.assertNotContains(r, 'bob')
+
     def test_search_by_name(self):
         r = self.client.get(reverse('accounts:profile_search'), {'q': 'ali'})
         self.assertContains(r, 'alice')
@@ -45,6 +50,19 @@ class ProfileSearchTests(TestCase):
         self.assertContains(r, 'alice')
         self.assertNotContains(r, 'bob')
 
+    def test_filter_by_owned_boardgame(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
+        self.assertContains(r, 'alice')
+        self.assertNotContains(r, 'bob')
+
+    def test_known_filter_ignores_owned_only_games(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'known': 'gloom'})
+        self.assertNotContains(r, 'alice')
+
+    def test_owned_boardgames_shown_in_results(self):
+        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
+        self.assertContains(r, 'Gloomhaven')
+
     def test_deactivated_profile_not_in_search(self):
         r = self.client.get(reverse('accounts:profile_search'))
         self.assertNotContains(r, 'dave')
@@ -56,6 +74,12 @@ class ProfileSearchTests(TestCase):
     def test_profile_detail_loads(self):
         r = self.client.get(reverse('accounts:profile_detail', args=['alice']))
         self.assertEqual(r.status_code, 200)
+
+    def test_profile_detail_shows_boardgames_with_tags(self):
+        r = self.client.get(reverse('accounts:profile_detail', args=['alice']))
+        self.assertContains(r, 'Gloomhaven')
+        self.assertContains(r, 'Owned')
+        self.assertContains(r, 'Known')
 
     def test_search_requires_login(self):
         self.client.logout()

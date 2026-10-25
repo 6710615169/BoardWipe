@@ -94,7 +94,6 @@ class ProfilePictureAcceptanceTest(TestCase):
                 'display_name': 'Alice',
                 'favorite_boardgame': 'Catan',
                 'favorite_genre': 'strategy',
-                'known_boardgames': 'Catan, Ticket to Ride',
                 'bio': 'Hello world',
                 'profile_picture': uploaded,
             },

@@ -3,14 +3,15 @@ from django.contrib import messages
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from .models import User
 
-from .forms import ProfileForm, RegisterForm
+from .forms import ProfileBoardgameEditForm, ProfileBoardgameForm, ProfileForm, RegisterForm
+from .models import ProfileBoardgame
 
 @login_required
 def profile_search_view(request):
@@ -109,7 +110,7 @@ def profile_view(request):
     user = request.user
     context = {
         'profile_user': user,
-        'known_boardgames_list': user.known_boardgames_list(),
+        'profile_boardgames': user.profile_boardgames.all(),
     }
     return render(request, 'accounts/profile.html', context)
 
@@ -131,7 +132,11 @@ def profile_editing_view(request):
     else:
         form = ProfileForm(instance=request.user)
 
-    return render(request, 'accounts/profile_editing.html', {'form': form})
+    context = {
+        'form': form,
+        'profile_boardgames': request.user.profile_boardgames.all(),
+    }
+    return render(request, 'accounts/profile_editing.html', context)
 
 
 @login_required
@@ -150,3 +155,48 @@ def profile_settings_view(request):
         form = PasswordChangeForm(user=request.user)
 
     return render(request, 'accounts/profile_settings.html', {'form': form})
+
+
+@login_required
+def boardgame_add_view(request):
+    """Add a boardgame, with an optional picture, to the logged-in user's profile."""
+    if request.method == 'POST':
+        form = ProfileBoardgameForm(request.POST, request.FILES, user=request.user)
+        if form.is_valid():
+            game = form.save()
+            messages.success(request, f'{game.name} was added to your profile.')
+            return redirect('accounts:profile_editing')
+    else:
+        form = ProfileBoardgameForm(user=request.user)
+
+    return render(request, 'accounts/boardgame_add.html', {'form': form})
+
+
+@login_required
+def boardgame_edit_view(request, pk):
+    """Change the picture or known/owned flags of one of the user's own games."""
+    # Filtering on user turns someone else's game into a 404, not a 403, so
+    # the URL does not reveal which ids exist.
+    game = get_object_or_404(ProfileBoardgame, pk=pk, user=request.user)
+
+    if request.method == 'POST':
+        form = ProfileBoardgameEditForm(request.POST, request.FILES, instance=game)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'{game.name} was updated.')
+            return redirect('accounts:profile_editing')
+    else:
+        form = ProfileBoardgameEditForm(instance=game)
+
+    return render(request, 'accounts/boardgame_edit.html', {'form': form, 'game': game})
+
+
+@login_required
+@require_POST
+def boardgame_delete_view(request, pk):
+    """POST-only removal of one of the user's games, along with its picture file."""
+    game = get_object_or_404(ProfileBoardgame, pk=pk, user=request.user)
+    game.picture.delete(save=False)
+    game.delete()
+    messages.success(request, f'{game.name} was removed from your profile.')
+    return redirect('accounts:profile_editing')

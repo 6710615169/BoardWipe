@@ -24,6 +24,7 @@
 {% for friend in friends %}
     <div>
         {{ friend.get_display_name }} ({{ friend.username }})
+        <a href="{% url 'chat:conversation' friend.username %}">Chat</a>
         <form method="post" action="{% url 'accounts:remove_friend' friend.username %}" style="display:inline">
             {% csrf_token %}<button type="submit">Remove</button>
         </form>

@@ -1,0 +1,92 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Chat with {{ friend.get_display_name }}{% endblock %}
+
+{% block content %}
+<h1>Chat with {{ friend.get_display_name }}</h1>
+<a href="{% url 'accounts:friends' %}">Back to friends</a>
+
+<div id="chat-log" class="chat-log" data-poll-url="{% url 'chat:new_messages' friend.username 0 %}">
+    {% if not chat_messages %}<p id="chat-empty">No messages yet. Say hello!</p>{% endif %}
+    {% include "chat/_messages.html" %}
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div id="boardgame-suggestions" class="chat-suggestions" hidden></div>
+    <button type="submit">Send</button>
+</form>
+
+{{ boardgame_names|json_script:"boardgame-names" }}
+<script>
+    const chatLog = document.getElementById('chat-log');
+    chatLog.scrollTop = chatLog.scrollHeight;
+
+    async function pollForMessages() {
+        const shown = chatLog.querySelectorAll('[data-id]');
+        const lastId = shown.length ? shown[shown.length - 1].dataset.id : 0;
+        try {
+            const response = await fetch(chatLog.dataset.pollUrl.replace(/0\/$/, `${lastId}/`));
+            // A redirect means the session ended, and the response is the login
+            // page, which must not be added to the conversation.
+            if (response.ok && !response.redirected) {
+                const html = (await response.text()).trim();
+                if (html) {
+                    document.getElementById('chat-empty')?.remove();
+                    chatLog.insertAdjacentHTML('beforeend', html);
+                    chatLog.scrollTop = chatLog.scrollHeight;
+                }
+            }
+        } catch (error) {
+            // Most likely a dropped connection; the next poll tries again.
+        }
+        // Scheduled only after this poll finishes, so a slow response cannot
+        // overlap the next poll and add the same message twice.
+        setTimeout(pollForMessages, 3000);
+    }
+
+    setTimeout(pollForMessages, 3000);
+
+    const boardgameNames = JSON.parse(document.getElementById('boardgame-names').textContent);
+    const messageBox = document.getElementById('id_body');
+    const suggestions = document.getElementById('boardgame-suggestions');
+
+    function textBeforeCaret() {
+        return messageBox.value.slice(0, messageBox.selectionStart);
+    }
+
+    function showSuggestions() {
+        // Same rule as the highlighting: an @ straight after a letter or digit,
+        // as in an email address, does not start a mention.
+        const mention = textBeforeCaret().match(/(?<!\w)@([^@\n]*)$/);
+        const typed = mention ? mention[1].toLowerCase() : null;
+        const matches = mention ? boardgameNames.filter((name) => name.toLowerCase().startsWith(typed)) : [];
+        suggestions.replaceChildren(...matches.map((name) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = `@${name}`;
+            button.addEventListener('click', () => insertMention(name));
+            return button;
+        }));
+        suggestions.hidden = matches.length === 0;
+    }
+
+    function insertMention(name) {
+        const before = textBeforeCaret().replace(/@[^@\n]*$/, () => `@${name} `);
+        messageBox.value = before + messageBox.value.slice(messageBox.selectionStart);
+        messageBox.setSelectionRange(before.length, before.length);
+        messageBox.focus();
+        showSuggestions();
+    }
+
+    messageBox.addEventListener('input', showSuggestions);
+    messageBox.addEventListener('click', showSuggestions);
+    messageBox.addEventListener('keydown', (event) => {
+        if (event.key === 'Tab' && !suggestions.hidden) {
+            event.preventDefault();
+            suggestions.firstChild.click();
+        }
+    });
+</script>
+{% endblock %}

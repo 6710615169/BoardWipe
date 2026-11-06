@@ -1,0 +1,7 @@
+{% load chat_tags %}
+{% for message in chat_messages %}
+    <div class="chat-message{% if message.sender_id == user.id %} chat-message-own{% endif %}" data-id="{{ message.id }}">
+        <small>{{ message.sender.get_display_name }} - {{ message.created_at|date:"M j, H:i" }}</small>
+        <div>{{ message.body|highlight_boardgames:boardgame_names|linebreaksbr }}</div>
+    </div>
+{% endfor %}

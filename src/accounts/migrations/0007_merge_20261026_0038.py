@@ -6,9 +6,8 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0004_user_friends_friendrequest'),
-        ('accounts', '0006_remove_user_known_boardgames'),
+        ("accounts", "0004_user_friends_friendrequest"),
+        ("accounts", "0006_remove_user_known_boardgames"),
     ]
 
-    operations = [
-    ]
+    operations = []

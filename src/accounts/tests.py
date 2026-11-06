@@ -21,401 +21,442 @@ from .models import ProfileBoardgame, FriendRequest, User
 
 class ProfileSearchTests(TestCase):
     def setUp(self):
-        self.me = User.objects.create_user('me', password='pass12345')
-        self.alice = User.objects.create_user('alice', password='x', favorite_genre='strategy')
-        self.bob = User.objects.create_user('bob', password='x', favorite_genre='party')
+        self.me = User.objects.create_user("me", password="pass12345")
+        self.alice = User.objects.create_user(
+            "alice", password="x", favorite_genre="strategy"
+        )
+        self.bob = User.objects.create_user("bob", password="x", favorite_genre="party")
         self.dave = User.objects.create_user(
-            'dave', password='x', favorite_genre='strategy', is_active=False)
+            "dave", password="x", favorite_genre="strategy", is_active=False
+        )
 
-        ProfileBoardgame.objects.create(user=self.alice, name='Catan', is_known=True, is_owned=True)
-        ProfileBoardgame.objects.create(user=self.alice, name='Gloomhaven', is_known=False, is_owned=True)
-        ProfileBoardgame.objects.create(user=self.alice, name='Chess', is_known=True)
-        ProfileBoardgame.objects.create(user=self.bob, name='Codenames', is_known=True)
-        ProfileBoardgame.objects.create(user=self.bob, name='Uno', is_known=False, is_owned=True)
+        ProfileBoardgame.objects.create(
+            user=self.alice, name="Catan", is_known=True, is_owned=True
+        )
+        ProfileBoardgame.objects.create(
+            user=self.alice, name="Gloomhaven", is_known=False, is_owned=True
+        )
+        ProfileBoardgame.objects.create(user=self.alice, name="Chess", is_known=True)
+        ProfileBoardgame.objects.create(user=self.bob, name="Codenames", is_known=True)
+        ProfileBoardgame.objects.create(
+            user=self.bob, name="Uno", is_known=False, is_owned=True
+        )
 
-        self.client.login(username='me', password='pass12345')
+        self.client.login(username="me", password="pass12345")
 
     def test_search_by_name(self):
-        r = self.client.get(reverse('accounts:profile_search'), {'q': 'ali'})
-        self.assertContains(r, 'alice')
-        self.assertNotContains(r, 'bob')
+        r = self.client.get(reverse("accounts:profile_search"), {"q": "ali"})
+        self.assertContains(r, "alice")
+        self.assertNotContains(r, "bob")
 
     def test_filter_by_genre(self):
-        r = self.client.get(reverse('accounts:profile_search'), {'genre': 'party'})
-        self.assertContains(r, 'bob')
-        self.assertNotContains(r, 'alice')
+        r = self.client.get(reverse("accounts:profile_search"), {"genre": "party"})
+        self.assertContains(r, "bob")
+        self.assertNotContains(r, "alice")
 
     def test_filter_by_known_boardgame(self):
-        r = self.client.get(reverse('accounts:profile_search'), {'known': 'chess'})
-        self.assertContains(r, 'alice')
-        self.assertNotContains(r, 'bob')
+        r = self.client.get(reverse("accounts:profile_search"), {"known": "chess"})
+        self.assertContains(r, "alice")
+        self.assertNotContains(r, "bob")
 
     def test_filter_by_owned_boardgame(self):
-        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
-        self.assertContains(r, 'alice')
-        self.assertNotContains(r, 'bob')
+        r = self.client.get(reverse("accounts:profile_search"), {"owned": "gloom"})
+        self.assertContains(r, "alice")
+        self.assertNotContains(r, "bob")
 
     def test_known_filter_ignores_owned_only_games(self):
-        r = self.client.get(reverse('accounts:profile_search'), {'known': 'gloom'})
-        self.assertNotContains(r, 'alice')
+        r = self.client.get(reverse("accounts:profile_search"), {"known": "gloom"})
+        self.assertNotContains(r, "alice")
 
     def test_owned_boardgames_shown_in_results(self):
-        r = self.client.get(reverse('accounts:profile_search'), {'owned': 'gloom'})
-        self.assertContains(r, 'Gloomhaven')
+        r = self.client.get(reverse("accounts:profile_search"), {"owned": "gloom"})
+        self.assertContains(r, "Gloomhaven")
 
     def test_deactivated_profile_not_in_search(self):
-        r = self.client.get(reverse('accounts:profile_search'))
-        self.assertNotContains(r, 'dave')
+        r = self.client.get(reverse("accounts:profile_search"))
+        self.assertNotContains(r, "dave")
 
     def test_deactivated_profile_detail_is_404(self):
-        r = self.client.get(reverse('accounts:profile_detail', args=['dave']))
+        r = self.client.get(reverse("accounts:profile_detail", args=["dave"]))
         self.assertEqual(r.status_code, 404)
 
     def test_profile_detail_loads(self):
-        r = self.client.get(reverse('accounts:profile_detail', args=['alice']))
+        r = self.client.get(reverse("accounts:profile_detail", args=["alice"]))
         self.assertEqual(r.status_code, 200)
 
     def test_profile_detail_shows_boardgames_with_tags(self):
-        r = self.client.get(reverse('accounts:profile_detail', args=['alice']))
-        self.assertContains(r, 'Gloomhaven')
-        self.assertContains(r, 'Owned')
-        self.assertContains(r, 'Known')
+        r = self.client.get(reverse("accounts:profile_detail", args=["alice"]))
+        self.assertContains(r, "Gloomhaven")
+        self.assertContains(r, "Owned")
+        self.assertContains(r, "Known")
 
     def test_search_requires_login(self):
         self.client.logout()
-        r = self.client.get(reverse('accounts:profile_search'))
+        r = self.client.get(reverse("accounts:profile_search"))
         self.assertEqual(r.status_code, 302)
+
 
 class ProfilePictureAcceptanceTest(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
-            username='alice',
-            email='alice@example.com',
-            password='secret123',
+            username="alice",
+            email="alice@example.com",
+            password="secret123",
         )
 
     def test_anonymous_get_redirects_to_login(self):
-        profile_url = reverse('accounts:profile')
+        profile_url = reverse("accounts:profile")
         response = self.client.get(profile_url)
         # assertRedirects also fetches the target, so this proves the login
         # page really renders and not just that we redirected somewhere.
-        self.assertRedirects(response, reverse('accounts:login') + '?next=' + profile_url)
+        self.assertRedirects(
+            response, reverse("accounts:login") + "?next=" + profile_url
+        )
 
     def test_authenticated_get_returns_200(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('accounts:profile'))
+        response = self.client.get(reverse("accounts:profile"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'accounts/profile.html')
+        self.assertTemplateUsed(response, "accounts/profile.html")
 
     def test_profile_page_has_edit_profile_link(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('accounts:profile'))
+        response = self.client.get(reverse("accounts:profile"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Edit profile')
-        self.assertContains(response, reverse('accounts:profile_editing'))
+        self.assertContains(response, "Edit profile")
+        self.assertContains(response, reverse("accounts:profile_editing"))
 
     def test_profile_page_is_read_only(self):
         self.client.force_login(self.user)
-        response = self.client.post(reverse('accounts:profile'), {'display_name': 'Hacked'})
+        response = self.client.post(
+            reverse("accounts:profile"), {"display_name": "Hacked"}
+        )
         self.assertEqual(response.status_code, 405)
 
     def test_editing_page_requires_login(self):
-        editing_url = reverse('accounts:profile_editing')
+        editing_url = reverse("accounts:profile_editing")
         response = self.client.get(editing_url)
-        self.assertRedirects(response, reverse('accounts:login') + '?next=' + editing_url)
+        self.assertRedirects(
+            response, reverse("accounts:login") + "?next=" + editing_url
+        )
 
     def test_editing_page_renders_form_with_current_values(self):
-        self.user.favorite_boardgame = 'Azul'
+        self.user.favorite_boardgame = "Azul"
         self.user.save()
         self.client.force_login(self.user)
-        response = self.client.get(reverse('accounts:profile_editing'))
+        response = self.client.get(reverse("accounts:profile_editing"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'accounts/profile_editing.html')
-        self.assertIsInstance(response.context['form'], ProfileForm)
+        self.assertTemplateUsed(response, "accounts/profile_editing.html")
+        self.assertIsInstance(response.context["form"], ProfileForm)
         self.assertContains(response, 'value="Azul"')
 
     def test_invalid_edit_rerenders_with_errors_and_does_not_save(self):
-        User.objects.create_user(username='bob', email='bob@example.com', password='secret123')
+        User.objects.create_user(
+            username="bob", email="bob@example.com", password="secret123"
+        )
         self.client.force_login(self.user)
         response = self.client.post(
-            reverse('accounts:profile_editing'),
-            {'display_name': 'Alice', 'email': 'bob@example.com'},
+            reverse("accounts:profile_editing"),
+            {"display_name": "Alice", "email": "bob@example.com"},
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'accounts/profile_editing.html')
-        self.assertIn('email', response.context['form'].errors)
+        self.assertTemplateUsed(response, "accounts/profile_editing.html")
+        self.assertIn("email", response.context["form"].errors)
         self.user.refresh_from_db()
-        self.assertEqual(self.user.display_name, '')
+        self.assertEqual(self.user.display_name, "")
 
     @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
     def test_post_with_simple_uploaded_file_returns_302_and_saves_picture(self):
         self.client.force_login(self.user)
 
-        image = Image.new('RGB', (10, 10), color='blue')
+        image = Image.new("RGB", (10, 10), color="blue")
         image_bytes = BytesIO()
-        image.save(image_bytes, format='PNG')
+        image.save(image_bytes, format="PNG")
         image_bytes.seek(0)
 
         uploaded = SimpleUploadedFile(
-            'profile.png',
+            "profile.png",
             image_bytes.read(),
-            content_type='image/png',
+            content_type="image/png",
         )
 
         response = self.client.post(
-            reverse('accounts:profile_editing'),
+            reverse("accounts:profile_editing"),
             {
-                'display_name': 'Alice',
-                'favorite_boardgame': 'Catan',
-                'favorite_genre': 'strategy',
-                'bio': 'Hello world',
-                'profile_picture': uploaded,
+                "display_name": "Alice",
+                "favorite_boardgame": "Catan",
+                "favorite_genre": "strategy",
+                "bio": "Hello world",
+                "profile_picture": uploaded,
             },
         )
 
         self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertRedirects(response, reverse("accounts:profile"))
 
         self.user.refresh_from_db()
         self.assertTrue(self.user.profile_picture.name)
-        self.assertIn('profile.png', self.user.profile_picture.name)
+        self.assertIn("profile.png", self.user.profile_picture.name)
 
     def test_profile_form_includes_profile_picture_field(self):
         form = ProfileForm()
-        self.assertIn('profile_picture', form.fields)
+        self.assertIn("profile_picture", form.fields)
 
     def test_user_model_has_profile_picture_field_imagefield(self):
-        field = User._meta.get_field('profile_picture')
-        self.assertTrue(field.__class__.__name__ == 'ImageField')
+        field = User._meta.get_field("profile_picture")
+        self.assertTrue(field.__class__.__name__ == "ImageField")
 
     def test_email_already_used_by_someone_else_is_rejected(self):
-        User.objects.create_user(username='bob', email='bob@example.com', password='secret123')
-        form = ProfileForm({'email': 'BOB@example.com'}, instance=self.user)
+        User.objects.create_user(
+            username="bob", email="bob@example.com", password="secret123"
+        )
+        form = ProfileForm({"email": "BOB@example.com"}, instance=self.user)
         self.assertFalse(form.is_valid())
-        self.assertIn('email', form.errors)
+        self.assertIn("email", form.errors)
 
     def test_own_email_and_blank_email_are_accepted(self):
-        form = ProfileForm({'email': self.user.email}, instance=self.user)
+        form = ProfileForm({"email": self.user.email}, instance=self.user)
         self.assertTrue(form.is_valid(), form.errors)
-        form = ProfileForm({'email': ''}, instance=self.user)
+        form = ProfileForm({"email": ""}, instance=self.user)
         self.assertTrue(form.is_valid(), form.errors)
 
 
 class RegisterViewTest(TestCase):
     def test_get_renders_form(self):
-        response = self.client.get(reverse('accounts:register'))
+        response = self.client.get(reverse("accounts:register"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'accounts/register.html')
+        self.assertTemplateUsed(response, "accounts/register.html")
 
     def test_valid_post_creates_user_and_logs_them_in(self):
         response = self.client.post(
-            reverse('accounts:register'),
+            reverse("accounts:register"),
             {
-                'username': 'bob',
-                'email': 'bob@example.com',
-                'password1': 'a-str0ng-passw0rd',
-                'password2': 'a-str0ng-passw0rd',
+                "username": "bob",
+                "email": "bob@example.com",
+                "password1": "a-str0ng-passw0rd",
+                "password2": "a-str0ng-passw0rd",
             },
         )
-        self.assertRedirects(response, reverse('accounts:profile'))
-        self.assertEqual(User.objects.get(username='bob').email, 'bob@example.com')
-        self.assertEqual(int(self.client.session['_auth_user_id']), User.objects.get(username='bob').pk)
+        self.assertRedirects(response, reverse("accounts:profile"))
+        self.assertEqual(User.objects.get(username="bob").email, "bob@example.com")
+        self.assertEqual(
+            int(self.client.session["_auth_user_id"]),
+            User.objects.get(username="bob").pk,
+        )
 
     def test_duplicate_username_is_rejected_case_insensitively(self):
-        User.objects.create_user(username='alice', password='secret123')
+        User.objects.create_user(username="alice", password="secret123")
         response = self.client.post(
-            reverse('accounts:register'),
+            reverse("accounts:register"),
             {
-                'username': 'ALICE',
-                'email': 'other@example.com',
-                'password1': 'a-str0ng-passw0rd',
-                'password2': 'a-str0ng-passw0rd',
+                "username": "ALICE",
+                "email": "other@example.com",
+                "password1": "a-str0ng-passw0rd",
+                "password2": "a-str0ng-passw0rd",
             },
         )
         self.assertEqual(response.status_code, 200)
         self.assertFormError(
-            response.context['form'], 'username', 'A user with that username already exists.'
+            response.context["form"],
+            "username",
+            "A user with that username already exists.",
         )
         self.assertEqual(User.objects.count(), 1)
 
-
     def test_duplicate_email_is_rejected_case_insensitively(self):
-        User.objects.create_user(username='alice', email='dup@example.com', password='secret123')
+        User.objects.create_user(
+            username="alice", email="dup@example.com", password="secret123"
+        )
         response = self.client.post(
-            reverse('accounts:register'),
+            reverse("accounts:register"),
             {
-                'username': 'bob',
-                'email': 'DUP@example.com',
-                'password1': 'a-str0ng-passw0rd',
-                'password2': 'a-str0ng-passw0rd',
+                "username": "bob",
+                "email": "DUP@example.com",
+                "password1": "a-str0ng-passw0rd",
+                "password2": "a-str0ng-passw0rd",
             },
         )
         self.assertEqual(response.status_code, 200)
-        self.assertFormError(response.context['form'], 'email', 'A user with that email already exists.')
+        self.assertFormError(
+            response.context["form"], "email", "A user with that email already exists."
+        )
         self.assertEqual(User.objects.count(), 1)
 
     def test_authenticated_user_is_sent_to_profile(self):
-        self.client.force_login(User.objects.create_user(username='alice', password='secret123'))
-        self.assertRedirects(self.client.get(reverse('accounts:register')), reverse('accounts:profile'))
+        self.client.force_login(
+            User.objects.create_user(username="alice", password="secret123")
+        )
+        self.assertRedirects(
+            self.client.get(reverse("accounts:register")), reverse("accounts:profile")
+        )
 
 
 class LoginLogoutViewTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='alice', password='secret123')
+        self.user = User.objects.create_user(username="alice", password="secret123")
 
     def test_login_success_redirects_to_login_redirect_url(self):
         response = self.client.post(
-            reverse('accounts:login'), {'username': 'alice', 'password': 'secret123'}
+            reverse("accounts:login"), {"username": "alice", "password": "secret123"}
         )
-        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertRedirects(response, reverse("accounts:profile"))
 
     def test_login_honors_safe_next_parameter(self):
-        target = reverse('accounts:profile_settings')
+        target = reverse("accounts:profile_settings")
         response = self.client.post(
-            reverse('accounts:login'),
-            {'username': 'alice', 'password': 'secret123', 'next': target},
+            reverse("accounts:login"),
+            {"username": "alice", "password": "secret123", "next": target},
         )
         self.assertRedirects(response, target)
 
     def test_login_honors_next_from_the_query_string(self):
-        target = reverse('accounts:profile_settings')
+        target = reverse("accounts:profile_settings")
         response = self.client.post(
-            reverse('accounts:login') + '?next=' + target,
-            {'username': 'alice', 'password': 'secret123'},
+            reverse("accounts:login") + "?next=" + target,
+            {"username": "alice", "password": "secret123"},
         )
         self.assertRedirects(response, target)
 
     def test_login_ignores_offsite_next_parameter(self):
         response = self.client.post(
-            reverse('accounts:login'),
-            {'username': 'alice', 'password': 'secret123', 'next': 'https://evil.example.com/'},
+            reverse("accounts:login"),
+            {
+                "username": "alice",
+                "password": "secret123",
+                "next": "https://evil.example.com/",
+            },
         )
-        self.assertRedirects(response, reverse('accounts:profile'))
+        self.assertRedirects(response, reverse("accounts:profile"))
 
     def test_login_failure_shows_one_error_and_does_not_sign_in(self):
         response = self.client.post(
-            reverse('accounts:login'), {'username': 'alice', 'password': 'wrong'}
+            reverse("accounts:login"), {"username": "alice", "password": "wrong"}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context['form'].non_field_errors())
+        self.assertTrue(response.context["form"].non_field_errors())
         # The form renders its own error, so the view must not flash a second one.
-        self.assertEqual(len(response.context['messages']), 0)
-        self.assertNotIn('_auth_user_id', self.client.session)
+        self.assertEqual(len(response.context["messages"]), 0)
+        self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_anonymous_post_to_logout_is_a_no_op_redirect(self):
-        response = self.client.post(reverse('accounts:logout'))
-        self.assertRedirects(response, reverse('accounts:home'))
+        response = self.client.post(reverse("accounts:logout"))
+        self.assertRedirects(response, reverse("accounts:home"))
 
     def test_authenticated_user_is_sent_to_profile(self):
         self.client.force_login(self.user)
-        self.assertRedirects(self.client.get(reverse('accounts:login')), reverse('accounts:profile'))
+        self.assertRedirects(
+            self.client.get(reverse("accounts:login")), reverse("accounts:profile")
+        )
 
     def test_logout_rejects_get(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('accounts:logout'))
+        response = self.client.get(reverse("accounts:logout"))
         self.assertEqual(response.status_code, 405)
-        self.assertIn('_auth_user_id', self.client.session)
+        self.assertIn("_auth_user_id", self.client.session)
 
     def test_logout_via_post_ends_session(self):
         self.client.force_login(self.user)
-        response = self.client.post(reverse('accounts:logout'))
-        self.assertRedirects(response, reverse('accounts:home'))
-        self.assertNotIn('_auth_user_id', self.client.session)
+        response = self.client.post(reverse("accounts:logout"))
+        self.assertRedirects(response, reverse("accounts:home"))
+        self.assertNotIn("_auth_user_id", self.client.session)
 
 
 class ProfileSettingsViewTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(username='alice', password='secret123')
+        self.user = User.objects.create_user(username="alice", password="secret123")
 
     def test_anonymous_get_redirects_to_login(self):
-        settings_url = reverse('accounts:profile_settings')
+        settings_url = reverse("accounts:profile_settings")
         response = self.client.get(settings_url)
-        self.assertRedirects(response, reverse('accounts:login') + '?next=' + settings_url)
+        self.assertRedirects(
+            response, reverse("accounts:login") + "?next=" + settings_url
+        )
 
     def test_authenticated_get_renders_password_form(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('accounts:profile_settings'))
+        response = self.client.get(reverse("accounts:profile_settings"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'accounts/profile_settings.html')
-        self.assertIsInstance(response.context['form'], PasswordChangeForm)
+        self.assertTemplateUsed(response, "accounts/profile_settings.html")
+        self.assertIsInstance(response.context["form"], PasswordChangeForm)
 
     def test_password_change_applies_and_keeps_session(self):
         self.client.force_login(self.user)
         response = self.client.post(
-            reverse('accounts:profile_settings'),
+            reverse("accounts:profile_settings"),
             {
-                'old_password': 'secret123',
-                'new_password1': 'a-str0ng-passw0rd',
-                'new_password2': 'a-str0ng-passw0rd',
+                "old_password": "secret123",
+                "new_password1": "a-str0ng-passw0rd",
+                "new_password2": "a-str0ng-passw0rd",
             },
         )
-        self.assertRedirects(response, reverse('accounts:profile_settings'))
+        self.assertRedirects(response, reverse("accounts:profile_settings"))
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password('a-str0ng-passw0rd'))
+        self.assertTrue(self.user.check_password("a-str0ng-passw0rd"))
         # update_session_auth_hash must keep the user signed in after the change.
-        self.assertIn('_auth_user_id', self.client.session)
-
+        self.assertIn("_auth_user_id", self.client.session)
 
     def test_wrong_old_password_leaves_password_unchanged(self):
         self.client.force_login(self.user)
         response = self.client.post(
-            reverse('accounts:profile_settings'),
+            reverse("accounts:profile_settings"),
             {
-                'old_password': 'not-my-password',
-                'new_password1': 'a-str0ng-passw0rd',
-                'new_password2': 'a-str0ng-passw0rd',
+                "old_password": "not-my-password",
+                "new_password1": "a-str0ng-passw0rd",
+                "new_password2": "a-str0ng-passw0rd",
             },
         )
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.context['form'].errors)
+        self.assertTrue(response.context["form"].errors)
         self.user.refresh_from_db()
-        self.assertTrue(self.user.check_password('secret123'))
+        self.assertTrue(self.user.check_password("secret123"))
 
 
 class HomeViewTest(TestCase):
     def test_home_renders_for_anonymous_visitor(self):
-        response = self.client.get(reverse('accounts:home'))
+        response = self.client.get(reverse("accounts:home"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'accounts/home.html')
+        self.assertTemplateUsed(response, "accounts/home.html")
 
 
 class FriendTest(TestCase):
     def setUp(self):
-        self.alice = User.objects.create_user(username='alice', password='secret123')
-        self.bob = User.objects.create_user(username='bob', password='secret123')
+        self.alice = User.objects.create_user(username="alice", password="secret123")
+        self.bob = User.objects.create_user(username="bob", password="secret123")
         self.client.force_login(self.alice)
 
     def test_request_then_accept_makes_both_friends(self):
-        self.client.post(reverse('accounts:send_friend_request', args=['bob']))
+        self.client.post(reverse("accounts:send_friend_request", args=["bob"]))
         self.assertFalse(self.alice.friends.filter(pk=self.bob.pk).exists())
 
         self.client.force_login(self.bob)
-        self.client.post(reverse('accounts:accept_friend_request', args=['alice']))
+        self.client.post(reverse("accounts:accept_friend_request", args=["alice"]))
         self.assertTrue(self.alice.friends.filter(pk=self.bob.pk).exists())
         self.assertTrue(self.bob.friends.filter(pk=self.alice.pk).exists())
         self.assertFalse(FriendRequest.objects.exists())
 
     def test_decline_removes_request_without_friendship(self):
         FriendRequest.objects.create(from_user=self.bob, to_user=self.alice)
-        self.client.post(reverse('accounts:decline_friend_request', args=['bob']))
+        self.client.post(reverse("accounts:decline_friend_request", args=["bob"]))
         self.assertFalse(FriendRequest.objects.exists())
         self.assertFalse(self.alice.friends.exists())
 
     def test_cannot_accept_request_sent_to_someone_else(self):
-        carol = User.objects.create_user(username='carol', password='secret123')
+        carol = User.objects.create_user(username="carol", password="secret123")
         FriendRequest.objects.create(from_user=self.bob, to_user=carol)
-        response = self.client.post(reverse('accounts:accept_friend_request', args=['bob']))
+        response = self.client.post(
+            reverse("accounts:accept_friend_request", args=["bob"])
+        )
         self.assertEqual(response.status_code, 404)
 
     def test_cannot_add_yourself(self):
-        self.client.post(reverse('accounts:send_friend_request', args=['alice']))
+        self.client.post(reverse("accounts:send_friend_request", args=["alice"]))
         self.assertFalse(FriendRequest.objects.exists())
 
     def test_remove_friend_and_list(self):
         self.alice.friends.add(self.bob)
-        response = self.client.get(reverse('accounts:friends'))
-        self.assertContains(response, 'bob')
+        response = self.client.get(reverse("accounts:friends"))
+        self.assertContains(response, "bob")
 
-        self.client.post(reverse('accounts:remove_friend', args=['bob']))
+        self.client.post(reverse("accounts:remove_friend", args=["bob"]))
         self.assertFalse(self.bob.friends.filter(pk=self.alice.pk).exists())

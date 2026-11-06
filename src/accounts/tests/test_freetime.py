@@ -4,8 +4,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from .forms import FreeTimeForm
-from .models import FreeTime
+from accounts.forms import FreeTimeForm
+from accounts.models import FreeTime
 
 
 class FreeTimeTests(TestCase):
@@ -40,9 +40,7 @@ class FreeTimeTests(TestCase):
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
-                self.assertTemplateUsed(
-                    response, "accounts/freetime_form.html"
-                )
+                self.assertTemplateUsed(response, "accounts/freetime_form.html")
 
     def test_add_assigns_logged_in_owner(self):
         self.client.force_login(self.owner)
@@ -80,9 +78,7 @@ class FreeTimeTests(TestCase):
                 for url in [self.add_url, self.edit_url]:
                     response = self.client.post(url, data)
                     self.assertEqual(response.status_code, 200)
-                    self.assertContains(
-                        response, "End time must be after start time."
-                    )
+                    self.assertContains(response, "End time must be after start time.")
 
         self.assertEqual(FreeTime.objects.count(), 1)
         self.slot.refresh_from_db()
@@ -92,12 +88,8 @@ class FreeTimeTests(TestCase):
     def test_other_user_cannot_edit(self):
         self.client.force_login(self.other)
 
-        self.assertEqual(
-            self.client.get(self.edit_url).status_code, 404
-        )
-        self.assertEqual(
-            self.client.post(self.edit_url, self.data).status_code, 404
-        )
+        self.assertEqual(self.client.get(self.edit_url).status_code, 404)
+        self.assertEqual(self.client.post(self.edit_url, self.data).status_code, 404)
 
         self.slot.refresh_from_db()
         self.assertEqual(self.slot.start_time, time(13, 0))

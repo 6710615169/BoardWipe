@@ -19,7 +19,7 @@ def validate_email_is_unused(email, exclude_pk=None):
     if exclude_pk is not None:
         clash = clash.exclude(pk=exclude_pk)
     if clash.exists():
-        raise forms.ValidationError('A user with that email already exists.')
+        raise forms.ValidationError("A user with that email already exists.")
     return email
 
 
@@ -30,10 +30,10 @@ class RegisterForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ['username', 'email', 'password1', 'password2']
+        fields = ["username", "email", "password1", "password2"]
 
     def clean_email(self):
-        return validate_email_is_unused(self.cleaned_data.get('email', ''))
+        return validate_email_is_unused(self.cleaned_data.get("email", ""))
 
 
 class ProfileForm(forms.ModelForm):
@@ -42,17 +42,17 @@ class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
         fields = [
-            'display_name',
-            'first_name',
-            'last_name',
-            'email',
-            'favorite_boardgame',
-            'favorite_genre',
-            'bio',
-            'profile_picture',
+            "display_name",
+            "first_name",
+            "last_name",
+            "email",
+            "favorite_boardgame",
+            "favorite_genre",
+            "bio",
+            "profile_picture",
         ]
         widgets = {
-            'bio': forms.Textarea(attrs={'rows': 4}),
+            "bio": forms.Textarea(attrs={"rows": 4}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -60,7 +60,9 @@ class ProfileForm(forms.ModelForm):
         # Remember the stored picture now: by the time save() runs, the form
         # has already pointed the instance at the new upload (or at '' when
         # "Clear" was ticked), so the old name would be lost.
-        self._old_picture_name = self.instance.profile_picture.name if self.instance.pk else ''
+        self._old_picture_name = (
+            self.instance.profile_picture.name if self.instance.pk else ""
+        )
 
     def save(self, commit=True):
         user = super().save(commit=commit)
@@ -81,12 +83,14 @@ class ProfileForm(forms.ModelForm):
 
     def clean_email(self):
         """Blank is allowed here; the profile form does not require an email."""
-        return validate_email_is_unused(self.cleaned_data.get('email', ''), exclude_pk=self.instance.pk)
+        return validate_email_is_unused(
+            self.cleaned_data.get("email", ""), exclude_pk=self.instance.pk
+        )
 
 
 BOARDGAME_FLAG_LABELS = {
-    'is_known': 'I know this game',
-    'is_owned': 'I own this game',
+    "is_known": "I know this game",
+    "is_owned": "I own this game",
 }
 
 
@@ -98,8 +102,10 @@ def validate_known_or_owned(form):
     leaves out constraints on fields that already failed) and the user sees
     one message instead of the raw constraint name.
     """
-    if not form.cleaned_data.get('is_known') and not form.cleaned_data.get('is_owned'):
-        form.add_error('is_known', 'Tick at least one of "I know this game" or "I own this game".')
+    if not form.cleaned_data.get("is_known") and not form.cleaned_data.get("is_owned"):
+        form.add_error(
+            "is_known", 'Tick at least one of "I know this game" or "I own this game".'
+        )
 
 
 class ProfileBoardgameForm(forms.ModelForm):
@@ -112,7 +118,7 @@ class ProfileBoardgameForm(forms.ModelForm):
 
     class Meta:
         model = ProfileBoardgame
-        fields = ['name', 'picture', 'is_known', 'is_owned']
+        fields = ["name", "picture", "is_known", "is_owned"]
         labels = BOARDGAME_FLAG_LABELS
 
     def __init__(self, *args, user, **kwargs):
@@ -121,10 +127,12 @@ class ProfileBoardgameForm(forms.ModelForm):
 
     def clean_name(self):
         # Match the model's save() so " catan " is checked as "catan".
-        name = ' '.join(self.cleaned_data['name'].split())
-        if ProfileBoardgame.objects.filter(user=self.instance.user, name__iexact=name).exists():
+        name = " ".join(self.cleaned_data["name"].split())
+        if ProfileBoardgame.objects.filter(
+            user=self.instance.user, name__iexact=name
+        ).exists():
             raise forms.ValidationError(
-                'This game is already on your profile. Edit it to change the picture.'
+                "This game is already on your profile. Edit it to change the picture."
             )
         return name
 
@@ -144,7 +152,7 @@ class ProfileBoardgameEditForm(forms.ModelForm):
 
     class Meta:
         model = ProfileBoardgame
-        fields = ['picture', 'is_known', 'is_owned']
+        fields = ["picture", "is_known", "is_owned"]
         labels = BOARDGAME_FLAG_LABELS
 
     def __init__(self, *args, **kwargs):
@@ -160,24 +168,30 @@ class ProfileBoardgameEditForm(forms.ModelForm):
         game = super().save(commit=commit)
         # Replacing or clearing the picture would otherwise leave the old file
         # orphaned in MEDIA_ROOT.
-        if commit and self._old_picture_name and game.picture.name != self._old_picture_name:
+        if (
+            commit
+            and self._old_picture_name
+            and game.picture.name != self._old_picture_name
+        ):
             game.picture.storage.delete(self._old_picture_name)
         return game
+
+
 class FreeTimeForm(forms.ModelForm):
     class Meta:
         model = FreeTime
-        fields = ['date', 'start_time', 'end_time']
+        fields = ["date", "start_time", "end_time"]
         widgets = {
-            'date': forms.DateInput(
-                format='%Y-%m-%d',
-                attrs={'type': 'date'},
+            "date": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={"type": "date"},
             ),
-            'start_time': forms.TimeInput(
-                format='%H:%M',
-                attrs={'type': 'time'},
+            "start_time": forms.TimeInput(
+                format="%H:%M",
+                attrs={"type": "time"},
             ),
-            'end_time': forms.TimeInput(
-                format='%H:%M',
-                attrs={'type': 'time'},
+            "end_time": forms.TimeInput(
+                format="%H:%M",
+                attrs={"type": "time"},
             ),
         }

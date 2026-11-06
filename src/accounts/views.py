@@ -167,11 +167,7 @@ def profile_search_view(request):
             profile_boardgames__name__icontains=owned,
         )
 
-    users = (
-        users.distinct()
-        .order_by("username")
-        .prefetch_related("profile_boardgames")
-    )
+    users = users.distinct().order_by("username").prefetch_related("profile_boardgames")
 
     return render(
         request,
@@ -199,9 +195,7 @@ def profile_view(request):
         "profile_boardgames": user.profile_boardgames.all(),
         "free_times": user.free_times.all(),
     }
-    context.update(
-        free_time_calendar_context(user, request.GET.get("month"))
-    )
+    context.update(free_time_calendar_context(user, request.GET.get("month")))
 
     return render(request, "accounts/profile.html", context)
 
@@ -221,9 +215,7 @@ def profile_detail_view(request, username):
         "profile_boardgames": profile_user.profile_boardgames.all(),
         "free_times": profile_user.free_times.all(),
     }
-    context.update(
-        free_time_calendar_context(profile_user, request.GET.get("month"))
-    )
+    context.update(free_time_calendar_context(profile_user, request.GET.get("month")))
 
     return render(request, "accounts/profile_detail.html", context)
 
@@ -249,7 +241,6 @@ def profile_editing_view(request):
         "form": form,
         "profile_boardgames": request.user.profile_boardgames.all(),
     }
-
     return render(request, "accounts/profile_editing.html", context)
 
 
@@ -337,8 +328,7 @@ def accept_friend_request(request, username):
 
     messages.success(
         request,
-        f"You are now friends with "
-        f"{friend_request.from_user.get_display_name()}.",
+        f"You are now friends with " f"{friend_request.from_user.get_display_name()}.",
     )
 
     return redirect("accounts:friends")

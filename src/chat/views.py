@@ -3,8 +3,17 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET
 
+from accounts.models import ProfileBoardgame
+
 from .forms import MessageForm
 from .models import Message
+
+
+def taggable_boardgames(user, friend):
+    """Return the sorted names of both people's games, without case-only duplicates."""
+    names = ProfileBoardgame.objects.filter(user__in=[user, friend]).values_list('name', flat=True)
+    unique_names = {name.casefold(): name for name in names}
+    return sorted(unique_names.values(), key=str.casefold)
 
 
 def get_friend_or_404(user, username):
@@ -40,6 +49,7 @@ def conversation_view(request, username):
     return render(request, 'chat/conversation.html', {
         'friend': friend,
         'chat_messages': messages_between(request.user, friend),
+        'boardgame_names': taggable_boardgames(request.user, friend),
         'form': form,
     })
 
@@ -51,4 +61,5 @@ def new_messages_view(request, username, after_id):
     friend = get_friend_or_404(request.user, username)
     return render(request, 'chat/_messages.html', {
         'chat_messages': messages_between(request.user, friend).filter(id__gt=after_id),
+        'boardgame_names': taggable_boardgames(request.user, friend),
     })

@@ -14,9 +14,11 @@
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
+    <div id="boardgame-suggestions" class="chat-suggestions" hidden></div>
     <button type="submit">Send</button>
 </form>
 
+{{ boardgame_names|json_script:"boardgame-names" }}
 <script>
     const chatLog = document.getElementById('chat-log');
     chatLog.scrollTop = chatLog.scrollHeight;
@@ -45,5 +47,46 @@
     }
 
     setTimeout(pollForMessages, 3000);
+
+    const boardgameNames = JSON.parse(document.getElementById('boardgame-names').textContent);
+    const messageBox = document.getElementById('id_body');
+    const suggestions = document.getElementById('boardgame-suggestions');
+
+    function textBeforeCaret() {
+        return messageBox.value.slice(0, messageBox.selectionStart);
+    }
+
+    function showSuggestions() {
+        // Same rule as the highlighting: an @ straight after a letter or digit,
+        // as in an email address, does not start a mention.
+        const mention = textBeforeCaret().match(/(?<!\w)@([^@\n]*)$/);
+        const typed = mention ? mention[1].toLowerCase() : null;
+        const matches = mention ? boardgameNames.filter((name) => name.toLowerCase().startsWith(typed)) : [];
+        suggestions.replaceChildren(...matches.map((name) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = `@${name}`;
+            button.addEventListener('click', () => insertMention(name));
+            return button;
+        }));
+        suggestions.hidden = matches.length === 0;
+    }
+
+    function insertMention(name) {
+        const before = textBeforeCaret().replace(/@[^@\n]*$/, () => `@${name} `);
+        messageBox.value = before + messageBox.value.slice(messageBox.selectionStart);
+        messageBox.setSelectionRange(before.length, before.length);
+        messageBox.focus();
+        showSuggestions();
+    }
+
+    messageBox.addEventListener('input', showSuggestions);
+    messageBox.addEventListener('click', showSuggestions);
+    messageBox.addEventListener('keydown', (event) => {
+        if (event.key === 'Tab' && !suggestions.hidden) {
+            event.preventDefault();
+            suggestions.firstChild.click();
+        }
+    });
 </script>
 {% endblock %}

@@ -78,7 +78,7 @@ class SendMessageTests(ChatTestCase):
 
     def test_empty_message_is_rejected(self):
         r = self.client.post(self.url, {'body': '   '})
-        self.assertContains(r, 'Write a message or tag a boardgame.')
+        self.assertContains(r, 'Write a message.')
         self.assertFalse(Message.objects.exists())
 
     def test_too_long_message_is_rejected(self):
@@ -100,38 +100,82 @@ class TagBoardgameTests(ChatTestCase):
         ProfileBoardgame.objects.create(user=self.alice, name='Gloomhaven', is_known=False, is_owned=True)
         ProfileBoardgame.objects.create(user=self.stranger, name='Secret Hitler')
 
-    def test_dropdown_offers_both_peoples_games_only(self):
+    def send(self, body):
+        self.client.post(self.url, {'body': body})
+        return self.client.get(self.url)
+
+    def test_suggestions_offer_both_peoples_games_only(self):
         r = self.client.get(self.url)
-        self.assertContains(r, '<option value="Catan">')
-        self.assertContains(r, '<option value="Gloomhaven">')
+        self.assertEqual(r.context['boardgame_names'], ['Catan', 'Gloomhaven'])
         self.assertNotContains(r, 'Secret Hitler')
 
     def test_same_game_on_both_profiles_is_offered_once(self):
         ProfileBoardgame.objects.create(user=self.alice, name='catan')
         r = self.client.get(self.url)
-        self.assertEqual(r.content.decode().lower().count('<option value="catan">'), 1)
+        self.assertEqual(len(r.context['boardgame_names']), 2)
 
-    def test_tag_is_saved_and_shown(self):
-        self.client.post(self.url, {'body': 'Bring this?', 'tagged_boardgame': 'Gloomhaven'})
-        self.assertEqual(Message.objects.get().tagged_boardgame, 'Gloomhaven')
-        r = self.client.get(self.url)
-        self.assertContains(r, '<span>Gloomhaven</span>')
+    def test_mention_is_highlighted_and_text_saved_as_typed(self):
+        r = self.send('Bring @Gloomhaven on Friday?')
+        self.assertEqual(Message.objects.get().body, 'Bring @Gloomhaven on Friday?')
+        self.assertContains(r, 'Bring <span class="chat-mention">@Gloomhaven</span> on Friday?')
 
-    def test_tag_without_text_is_allowed(self):
-        r = self.client.post(self.url, {'body': '', 'tagged_boardgame': 'Catan'})
-        self.assertRedirects(r, self.url)
-        self.assertEqual(Message.objects.get().tagged_boardgame, 'Catan')
+    def test_message_can_mention_several_games(self):
+        r = self.send('@Catan or @Gloomhaven?')
+        self.assertContains(
+            r, '<span class="chat-mention">@Catan</span> or <span class="chat-mention">@Gloomhaven</span>?')
 
-    def test_game_outside_the_conversation_is_rejected(self):
-        r = self.client.post(self.url, {'body': 'hi', 'tagged_boardgame': 'Secret Hitler'})
-        self.assertEqual(r.status_code, 200)
-        self.assertFalse(Message.objects.exists())
+    def test_mention_ignores_case(self):
+        self.assertContains(self.send('@catan please'), '<span class="chat-mention">@catan</span>')
 
-    def test_tag_survives_removing_the_game(self):
-        self.client.post(self.url, {'tagged_boardgame': 'Catan'})
+    def test_longest_name_wins(self):
+        ProfileBoardgame.objects.create(user=self.me, name='Ticket')
+        ProfileBoardgame.objects.create(user=self.me, name='Ticket to Ride')
+        self.assertContains(self.send('Play @Ticket to Ride'), '<span class="chat-mention">@Ticket to Ride</span>')
+
+    def test_mention_followed_by_punctuation(self):
+        self.assertContains(self.send('Play (@Catan)?'), '(<span class="chat-mention">@Catan</span>)?')
+
+    def test_text_that_only_looks_like_a_mention_is_not_highlighted(self):
+        for body in ['me@Catan.com', '@Catan2', 'Catan', '@Unknown game']:
+            with self.subTest(body=body):
+                Message.objects.all().delete()
+                self.assertNotContains(self.send(body), '<span class="chat-mention">')
+
+    def test_game_outside_the_conversation_is_not_highlighted(self):
+        self.assertNotContains(self.send('@Secret Hitler'), '<span class="chat-mention">')
+
+    def test_no_games_at_all_still_shows_escaped_text(self):
+        ProfileBoardgame.objects.all().delete()
+        r = self.send('<b>@Catan</b>')
+        self.assertContains(r, '&lt;b&gt;@Catan&lt;/b&gt;')
+        self.assertNotContains(r, '<span class="chat-mention">')
+
+    def test_highlight_stays_while_either_person_has_the_game(self):
+        ProfileBoardgame.objects.create(user=self.alice, name='Catan')
+        self.send('@Catan')
+        ProfileBoardgame.objects.filter(user=self.me, name='Catan').delete()
+        self.assertContains(self.client.get(self.url), '<span class="chat-mention">@Catan</span>')
+
+    def test_highlight_goes_when_nobody_has_the_game(self):
+        self.send('@Catan')
         ProfileBoardgame.objects.filter(name='Catan').delete()
         r = self.client.get(self.url)
-        self.assertContains(r, '<span>Catan</span>')
+        self.assertContains(r, '@Catan')
+        self.assertNotContains(r, '<span class="chat-mention">')
+
+    def test_polled_messages_are_highlighted(self):
+        Message.objects.create(sender=self.alice, recipient=self.me, body='@Catan?')
+        r = self.client.get(reverse('chat:new_messages', args=['alice', 0]))
+        self.assertContains(r, '<span class="chat-mention">@Catan</span>?')
+
+    def test_game_name_and_surrounding_text_are_escaped(self):
+        ProfileBoardgame.objects.create(user=self.me, name='<b>Risk</b>')
+        r = self.send('<i>x</i> @<b>Risk</b>')
+        self.assertContains(r, '&lt;i&gt;x&lt;/i&gt; <span class="chat-mention">@&lt;b&gt;Risk&lt;/b&gt;</span>')
+        self.assertNotContains(r, '<b>Risk</b>')
+
+    def test_line_breaks_are_kept_around_mentions(self):
+        self.assertContains(self.send('first\n@Catan'), 'first<br><span class="chat-mention">@Catan</span>')
 
 
 class MessageHistoryTests(ChatTestCase):

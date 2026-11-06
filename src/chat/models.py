@@ -18,14 +18,6 @@ class Message(models.Model):
     body = models.TextField(
         # Django enforces max_length only in form/model validation, not at the database level.
         max_length=1000,
-        blank=True,
-    )
-    # The game's name rather than a key to ProfileBoardgame, so old messages
-    # keep their tag after the game is removed from a profile.
-    tagged_boardgame = models.CharField(
-        max_length=150,
-        blank=True,
-        help_text="A boardgame from either person's profile.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

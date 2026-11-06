@@ -17,10 +17,10 @@ urlpatterns = [
     path('profile/friends/accept/<str:username>/', views.accept_friend_request, name='accept_friend_request'),
     path('profile/friends/decline/<str:username>/', views.decline_friend_request, name='decline_friend_request'),
     path('profile/friends/remove/<str:username>/', views.remove_friend, name='remove_friend'),
-
+    path('profile/freetime/add/',views.freetime_add_view,name='freetime_add',),
+    path('profile/freetime/<int:pk>/edit/',views.freetime_edit_view,name='freetime_edit',),
     path('search/', views.profile_search_view, name='profile_search'),
     path('users/<str:username>/', views.profile_detail_view, name='profile_detail'),
-
     path('profile/boardgames/add/', views.boardgame_add_view, name='boardgame_add'),
     path('profile/boardgames/<int:pk>/edit/', views.boardgame_edit_view, name='boardgame_edit'),
     path('profile/boardgames/<int:pk>/delete/', views.boardgame_delete_view, name='boardgame_delete'),

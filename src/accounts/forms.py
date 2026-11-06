@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-
+from .models import FreeTime
 from .models import ProfileBoardgame, User
 
 
@@ -163,3 +163,21 @@ class ProfileBoardgameEditForm(forms.ModelForm):
         if commit and self._old_picture_name and game.picture.name != self._old_picture_name:
             game.picture.storage.delete(self._old_picture_name)
         return game
+class FreeTimeForm(forms.ModelForm):
+    class Meta:
+        model = FreeTime
+        fields = ['date', 'start_time', 'end_time']
+        widgets = {
+            'date': forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={'type': 'date'},
+            ),
+            'start_time': forms.TimeInput(
+                format='%H:%M',
+                attrs={'type': 'time'},
+            ),
+            'end_time': forms.TimeInput(
+                format='%H:%M',
+                attrs={'type': 'time'},
+            ),
+        }

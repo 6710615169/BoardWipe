@@ -11,14 +11,14 @@ class User(AbstractUser):
     """Custom user with extra profile fields for the boardgame community."""
 
     GENRE_CHOICES = [
-        ('strategy', 'Strategy'),
-        ('party', 'Party'),
-        ('cooperative', 'Cooperative'),
-        ('family', 'Family'),
-        ('card_game', 'Card Game'),
-        ('war_game', 'War Game'),
-        ('rpg', 'Role-Playing'),
-        ('other', 'Other'),
+        ("strategy", "Strategy"),
+        ("party", "Party"),
+        ("cooperative", "Cooperative"),
+        ("family", "Family"),
+        ("card_game", "Card Game"),
+        ("war_game", "War Game"),
+        ("rpg", "Role-Playing"),
+        ("other", "Other"),
     ]
 
     display_name = models.CharField(
@@ -38,18 +38,19 @@ class User(AbstractUser):
         help_text="The genre of boardgame you like best.",
     )
     bio = models.TextField(
-        # Django enforces max_length only in form/model validation, not at the database level.
+        # Django enforces max_length only in form/model validation,
+        # not at the database level.
         max_length=500,
         blank=True,
         help_text="A short description about yourself.",
     )
     profile_picture = models.ImageField(
-        upload_to='profile_pictures/',
+        upload_to="profile_pictures/",
         blank=True,
         validators=[validate_image_size],
         help_text="Upload a profile picture for your account (max 5 MB).",
     )
-    friends = models.ManyToManyField('self', blank=True)
+    friends = models.ManyToManyField("self", blank=True)
 
     class Meta(AbstractUser.Meta):
         constraints = [
@@ -58,10 +59,10 @@ class User(AbstractUser):
             # form-level check in accounts.forms.validate_email_is_unused,
             # and covers the admin, createsuperuser and concurrent signups.
             models.UniqueConstraint(
-                Lower('email'),
-                condition=~models.Q(email=''),
-                name='accounts_user_email_ci_unique_nonblank',
-                violation_error_message='A user with that email already exists.',
+                Lower("email"),
+                condition=~models.Q(email=""),
+                name="accounts_user_email_ci_unique_nonblank",
+                violation_error_message="A user with that email already exists.",
             ),
         ]
 
@@ -76,31 +77,39 @@ class User(AbstractUser):
 class FriendRequest(models.Model):
     """A pending friend request. Deleted once accepted or declined."""
 
-    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_friend_requests')
-    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_friend_requests')
+    from_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="sent_friend_requests"
+    )
+    to_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="received_friend_requests"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['from_user', 'to_user'], name='unique_friend_request'),
+            models.UniqueConstraint(
+                fields=["from_user", "to_user"], name="unique_friend_request"
+            ),
         ]
 
     def __str__(self):
-        return f'{self.from_user} -> {self.to_user}'
+        return f"{self.from_user} -> {self.to_user}"
+
+
 class ProfileBoardgame(models.Model):
     """A boardgame on a user's profile: one row per game, with their own picture."""
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='profile_boardgames',
+        related_name="profile_boardgames",
     )
     name = models.CharField(
         max_length=150,
         help_text="The boardgame's name.",
     )
     picture = models.ImageField(
-        upload_to='boardgame_pictures/',
+        upload_to="boardgame_pictures/",
         blank=True,
         help_text="Your own picture of this boardgame.",
     )
@@ -115,23 +124,24 @@ class ProfileBoardgame(models.Model):
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['-added_at']
+        ordering = ["-added_at"]
         constraints = [
             # One row per game per user, so the same game cannot appear twice
             # with different pictures.
-            models.UniqueConstraint('user', Lower('name'), name='unique_profile_boardgame_name_ci'),
+            models.UniqueConstraint(
+                "user", Lower("name"), name="unique_profile_boardgame_name_ci"
+            ),
             # A row that is neither known nor owned has no reason to exist.
             models.CheckConstraint(
                 condition=Q(is_known=True) | Q(is_owned=True),
-                name='profile_boardgame_known_or_owned',
+                name="profile_boardgame_known_or_owned",
             ),
         ]
 
     def save(self, *args, **kwargs):
         # Trim and collapse inner whitespace so " catan " collides with "Catan".
-        self.name = ' '.join(self.name.split())
+        self.name = " ".join(self.name.split())
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f'{self.user} - {self.name}'
-
+        return f"{self.user} - {self.name}"

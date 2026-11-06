@@ -8,8 +8,11 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Q
 
+from chat.notifications import notify_friend_request
+
 from .models import ProfileBoardgame, FriendRequest, User
 from .forms import (
+    NotificationSettingsForm,
     ProfileBoardgameEditForm,
     ProfileBoardgameForm,
     ProfileForm,
@@ -177,20 +180,38 @@ def profile_editing_view(request):
 
 @login_required
 def profile_settings_view(request):
-    """Let a signed-in user change their own password."""
-    if request.method == "POST":
-        form = PasswordChangeForm(user=request.user, data=request.POST)
-        if form.is_valid():
-            user = form.save()
-            # Rotating the password invalidates the session hash; refresh it so
-            # the user is not logged out by their own password change.
-            update_session_auth_hash(request, user)
-            messages.success(request, "Password changed successfully.")
-            return redirect("accounts:profile_settings")
-    else:
-        form = PasswordChangeForm(user=request.user)
+    """
+    Let a signed-in user change their password and email notification setting.
 
-    return render(request, "accounts/profile_settings.html", {"form": form})
+    The page holds two forms; the submit button's name says which one was sent.
+    """
+    form = PasswordChangeForm(user=request.user)
+    notification_form = NotificationSettingsForm(instance=request.user)
+
+    if request.method == "POST":
+        if "save_notifications" in request.POST:
+            notification_form = NotificationSettingsForm(
+                request.POST, instance=request.user
+            )
+            if notification_form.is_valid():
+                notification_form.save()
+                messages.success(request, "Notification settings saved.")
+                return redirect("accounts:profile_settings")
+        else:
+            form = PasswordChangeForm(user=request.user, data=request.POST)
+            if form.is_valid():
+                user = form.save()
+                # Rotating the password invalidates the session hash; refresh it
+                # so the user is not logged out by their own password change.
+                update_session_auth_hash(request, user)
+                messages.success(request, "Password changed successfully.")
+                return redirect("accounts:profile_settings")
+
+    return render(
+        request,
+        "accounts/profile_settings.html",
+        {"form": form, "notification_form": notification_form},
+    )
 
 
 @login_required
@@ -228,7 +249,11 @@ def send_friend_request(request, username):
             request, f"You are now friends with {other.get_display_name()}."
         )
     else:
-        FriendRequest.objects.get_or_create(from_user=request.user, to_user=other)
+        friend_request, created = FriendRequest.objects.get_or_create(
+            from_user=request.user, to_user=other
+        )
+        if created:
+            notify_friend_request(friend_request)
         messages.success(request, f"Friend request sent to {other.get_display_name()}.")
 
     return redirect("accounts:friends")

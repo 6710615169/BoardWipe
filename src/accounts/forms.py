@@ -88,6 +88,15 @@ class ProfileForm(forms.ModelForm):
         )
 
 
+class NotificationSettingsForm(forms.ModelForm):
+    """Opt in or out of email notifications."""
+
+    class Meta:
+        model = User
+        fields = ["email_notifications"]
+        labels = {"email_notifications": "Email me about new messages and requests"}
+
+
 BOARDGAME_FLAG_LABELS = {
     "is_known": "I know this game",
     "is_owned": "I own this game",

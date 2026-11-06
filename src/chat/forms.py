@@ -8,12 +8,12 @@ class MessageForm(forms.ModelForm):
 
     class Meta:
         model = Message
-        fields = ['body']
-        labels = {'body': 'Message'}
-        help_texts = {'body': 'Type @ to tag a boardgame from either profile.'}
-        error_messages = {'body': {'required': 'Write a message.'}}
+        fields = ["body"]
+        labels = {"body": "Message"}
+        help_texts = {"body": "Type @ to tag a boardgame from either profile."}
+        error_messages = {"body": {"required": "Write a message."}}
         widgets = {
-            'body': forms.Textarea(attrs={'rows': 2}),
+            "body": forms.Textarea(attrs={"rows": 2}),
         }
 
     def __init__(self, *args, sender, recipient, **kwargs):

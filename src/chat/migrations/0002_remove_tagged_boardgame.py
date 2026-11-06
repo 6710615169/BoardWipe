@@ -6,17 +6,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('chat', '0001_initial'),
+        ("chat", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='message',
-            name='tagged_boardgame',
+            model_name="message",
+            name="tagged_boardgame",
         ),
         migrations.AlterField(
-            model_name='message',
-            name='body',
+            model_name="message",
+            name="body",
             field=models.TextField(max_length=1000),
         ),
     ]

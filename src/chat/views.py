@@ -11,7 +11,9 @@ from .models import Message
 
 def taggable_boardgames(user, friend):
     """Return the sorted names of both people's games, without case-only duplicates."""
-    names = ProfileBoardgame.objects.filter(user__in=[user, friend]).values_list('name', flat=True)
+    names = ProfileBoardgame.objects.filter(user__in=[user, friend]).values_list(
+        "name", flat=True
+    )
     unique_names = {name.casefold(): name for name in names}
     return sorted(unique_names.values(), key=str.casefold)
 
@@ -25,7 +27,7 @@ def get_friend_or_404(user, username):
 def messages_between(user, friend):
     return Message.objects.filter(
         Q(sender=user, recipient=friend) | Q(sender=friend, recipient=user)
-    ).select_related('sender')
+    ).select_related("sender")
 
 
 @login_required
@@ -38,20 +40,24 @@ def conversation_view(request, username):
     """
     friend = get_friend_or_404(request.user, username)
 
-    if request.method == 'POST':
+    if request.method == "POST":
         form = MessageForm(request.POST, sender=request.user, recipient=friend)
         if form.is_valid():
             form.save()
-            return redirect('chat:conversation', username=friend.username)
+            return redirect("chat:conversation", username=friend.username)
     else:
         form = MessageForm(sender=request.user, recipient=friend)
 
-    return render(request, 'chat/conversation.html', {
-        'friend': friend,
-        'chat_messages': messages_between(request.user, friend),
-        'boardgame_names': taggable_boardgames(request.user, friend),
-        'form': form,
-    })
+    return render(
+        request,
+        "chat/conversation.html",
+        {
+            "friend": friend,
+            "chat_messages": messages_between(request.user, friend),
+            "boardgame_names": taggable_boardgames(request.user, friend),
+            "form": form,
+        },
+    )
 
 
 @login_required
@@ -59,7 +65,13 @@ def conversation_view(request, username):
 def new_messages_view(request, username, after_id):
     """Return the messages newer than after_id, for the conversation page to poll."""
     friend = get_friend_or_404(request.user, username)
-    return render(request, 'chat/_messages.html', {
-        'chat_messages': messages_between(request.user, friend).filter(id__gt=after_id),
-        'boardgame_names': taggable_boardgames(request.user, friend),
-    })
+    return render(
+        request,
+        "chat/_messages.html",
+        {
+            "chat_messages": messages_between(request.user, friend).filter(
+                id__gt=after_id
+            ),
+            "boardgame_names": taggable_boardgames(request.user, friend),
+        },
+    )

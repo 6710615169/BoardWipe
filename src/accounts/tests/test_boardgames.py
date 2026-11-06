@@ -9,8 +9,8 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
-from .forms import ProfileBoardgameEditForm, ProfileBoardgameForm, ProfileForm
-from .models import ProfileBoardgame, User
+from accounts.forms import ProfileBoardgameEditForm, ProfileBoardgameForm, ProfileForm
+from accounts.models import ProfileBoardgame, User
 
 TEST_MEDIA_ROOT = tempfile.mkdtemp()
 

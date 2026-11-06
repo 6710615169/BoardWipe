@@ -7,8 +7,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Q
-from django.shortcuts import get_object_or_404
-from .models import User
 
 from .models import ProfileBoardgame, FriendRequest, User
 from .forms import (

@@ -38,7 +38,8 @@ class User(AbstractUser):
         help_text="The genre of boardgame you like best.",
     )
     bio = models.TextField(
-        # Django enforces max_length only in form/model validation, not at the database level.
+        # Django enforces max_length only in form/model validation,
+        # not at the database level.
         max_length=500,
         blank=True,
         help_text="A short description about yourself.",

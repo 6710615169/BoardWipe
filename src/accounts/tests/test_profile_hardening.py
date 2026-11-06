@@ -11,12 +11,12 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
-from .forms import ProfileForm
-from .models import User
+from accounts.forms import ProfileForm
+from accounts.models import User
 
 
 def make_png(name="pic.png", size=(10, 10), noisy=False):
-    """Build an uploaded PNG; noisy=True makes it large enough to trip a tiny size limit."""
+    """Build an uploaded PNG; noisy=True makes it big enough to trip a tiny limit."""
     if noisy:
         image = Image.frombytes("RGB", size, os.urandom(size[0] * size[1] * 3))
     else:

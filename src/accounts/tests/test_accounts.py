@@ -6,17 +6,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
-import tempfile
-from io import BytesIO
 
-from django.contrib.auth.forms import PasswordChangeForm
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase, override_settings
-from django.urls import reverse
-from PIL import Image
-
-from .forms import ProfileForm
-from .models import ProfileBoardgame, FriendRequest, User
+from accounts.forms import ProfileForm
+from accounts.models import ProfileBoardgame, FriendRequest, User
 
 
 class ProfileSearchTests(TestCase):

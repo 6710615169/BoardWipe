@@ -22,6 +22,8 @@ urlpatterns = [
     path('users/<str:username>/', views.profile_detail_view, name='profile_detail'),
 
     path('profile/boardgames/add/', views.boardgame_add_view, name='boardgame_add'),
+    path('profile/boardgames/add/<int:pk>/', views.boardgame_pick_view, name='boardgame_pick'),
+    path('profile/boardgames/new/', views.boardgame_create_view, name='boardgame_create'),
     path('profile/boardgames/<int:pk>/edit/', views.boardgame_edit_view, name='boardgame_edit'),
     path('profile/boardgames/<int:pk>/delete/', views.boardgame_delete_view, name='boardgame_delete'),
 

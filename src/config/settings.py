@@ -9,8 +9,10 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-from django.urls import reverse_lazy
+import os
 from pathlib import Path
+
+from django.urls import reverse_lazy
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -125,6 +127,11 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# The game catalog is filled from Wikidata (free, no key). "Add a game" searches
+# it live, and `manage.py import_games` bulk-imports popular games. Set the
+# environment variable GAME_API_ENABLED=0 to use only games saved locally.
+GAME_API_ENABLED = os.environ.get('GAME_API_ENABLED', '1') != '0'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

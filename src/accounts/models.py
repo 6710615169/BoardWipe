@@ -87,6 +87,103 @@ class FriendRequest(models.Model):
 
     def __str__(self):
         return f'{self.from_user} -> {self.to_user}'
+
+
+class Boardgame(models.Model):
+    """
+    A game in the shared catalog that players pick from when adding to their profile.
+
+    Rows are imported from Wikidata (external_id is the Wikidata id such as
+    "Q17271", cover_url points at Wikimedia Commons; see game_api.py) or are
+    added by a user (created_by set, cover is an uploaded image).
+    """
+
+    GENRE_CHOICES = User.GENRE_CHOICES
+
+    # Filter key -> (label, condition on the game's player range).
+    PLAYER_FILTERS = {
+        'single': ('Single player', Q(min_players__lte=1)),
+        'two': ('2 players', Q(min_players__lte=2, max_players__gte=2)),
+        'up_to_4': ('1-4 players', Q(max_players__lte=4)),
+        'five_plus': ('5+ players', Q(max_players__gte=5)),
+    }
+
+    external_id = models.CharField(
+        max_length=64, null=True, blank=True, unique=True,
+        help_text="Wikidata id (e.g. Q17271), for imported games.",
+    )
+    name = models.CharField(max_length=150)
+    cover = models.ImageField(
+        upload_to='boardgame_covers/',
+        blank=True,
+        validators=[validate_image_size],
+        help_text="Uploaded cover for games added by users (max 5 MB).",
+    )
+    cover_url = models.URLField(max_length=500, blank=True, help_text="Cover image URL, for imported games.")
+    min_players = models.PositiveSmallIntegerField(null=True, blank=True)
+    max_players = models.PositiveSmallIntegerField(null=True, blank=True)
+    # Genre keys wrapped in commas (",party,family,") so one genre can be
+    # matched with genres__contains=",party," without catching a longer key.
+    genres = models.CharField(max_length=200, blank=True)
+    rating = models.FloatField(null=True, blank=True, help_text="Rating out of 10. Wikidata has no ratings, so imported games leave it empty.")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='created_boardgames',
+    )
+    fetched_at = models.DateTimeField(null=True, blank=True, help_text="Last refreshed from Wikidata.")
+
+    class Meta:
+        ordering = [models.F('rating').desc(nulls_last=True), 'name']
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(min_players__isnull=True) | Q(max_players__isnull=True)
+                | Q(min_players__lte=models.F('max_players')),
+                name='boardgame_min_players_lte_max',
+            ),
+        ]
+
+    @staticmethod
+    def format_genres(genre_keys):
+        keys = [key for key in genre_keys if key]
+        return f",{','.join(keys)}," if keys else ''
+
+    @classmethod
+    def genre_filter(cls, genre_key):
+        return Q(genres__contains=f',{genre_key},')
+
+    @property
+    def genre_keys(self):
+        return [key for key in self.genres.split(',') if key]
+
+    @property
+    def genre_labels(self):
+        labels = dict(self.GENRE_CHOICES)
+        return [labels.get(key, key) for key in self.genre_keys]
+
+    @property
+    def cover_src(self):
+        return self.cover.url if self.cover else self.cover_url
+
+    @property
+    def players_display(self):
+        low, high = self.min_players, self.max_players
+        if not low and not high:
+            return 'Players unknown'
+        if not low or not high or low == high:
+            count = low or high
+            return f"{count} player{'s' if count != 1 else ''}"
+        return f'{low}-{high} players'
+
+    def save(self, *args, **kwargs):
+        self.name = ' '.join(self.name.split())
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
 class ProfileBoardgame(models.Model):
     """A boardgame on a user's profile: one row per game, with their own picture."""
 
@@ -103,6 +200,13 @@ class ProfileBoardgame(models.Model):
         upload_to='boardgame_pictures/',
         blank=True,
         help_text="Your own picture of this boardgame.",
+    )
+    boardgame = models.ForeignKey(
+        Boardgame,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='profile_entries',
+        help_text="The catalog game this entry was picked from, if any.",
     )
     is_known = models.BooleanField(
         default=True,
@@ -131,6 +235,13 @@ class ProfileBoardgame(models.Model):
         # Trim and collapse inner whitespace so " catan " collides with "Catan".
         self.name = ' '.join(self.name.split())
         super().save(*args, **kwargs)
+
+    @property
+    def picture_src(self):
+        """The user's own picture, else the catalog cover, else ''."""
+        if self.picture:
+            return self.picture.url
+        return self.boardgame.cover_src if self.boardgame else ''
 
     def __str__(self):
         return f'{self.user} - {self.name}'

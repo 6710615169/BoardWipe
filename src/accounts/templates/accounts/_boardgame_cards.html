@@ -9,6 +9,7 @@
     .game-placeholder { font-size: 40px; font-weight: bold; color: #2b6cb0; text-transform: uppercase; }
     .game-info { padding: 8px 10px 10px; flex: 1; }
     .game-name { display: block; font-weight: bold; word-break: break-word; }
+    .game-meta { display: block; font-size: .78em; color: #57606a; margin-top: 2px; }
     .game-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
     .game-badge { font-size: .75em; padding: 2px 8px; border-radius: 10px; background: #eef; color: #333; }
     .game-badge.owned { background: #d4edda; color: #155724; }
@@ -23,14 +24,17 @@
     {% for game in profile_boardgames %}
         <li class="game-card">
             <div class="game-picture">
-                {% if game.picture %}
-                    <img src="{{ game.picture.url }}" alt="{{ game.name }}">
+                {% if game.picture_src %}
+                    <img src="{{ game.picture_src }}" alt="{{ game.name }}" loading="lazy" referrerpolicy="no-referrer">
                 {% else %}
                     <span class="game-placeholder" aria-hidden="true">{{ game.name|first }}</span>
                 {% endif %}
             </div>
             <div class="game-info">
                 <span class="game-name">{{ game.name }}</span>
+                {% if game.boardgame %}
+                    <span class="game-meta">{{ game.boardgame.players_display }}{% if game.boardgame.genre_labels %} &middot; {{ game.boardgame.genre_labels|join:", " }}{% endif %}</span>
+                {% endif %}
                 <div class="game-badges">
                     {% if game.is_known %}<span class="game-badge">Known</span>{% endif %}
                     {% if game.is_owned %}<span class="game-badge owned">Owned</span>{% endif %}

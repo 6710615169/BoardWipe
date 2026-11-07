@@ -3,40 +3,76 @@
 {% block title %}Friends{% endblock %}
 
 {% block content %}
-<h1>Friends</h1>
+<div class="page-head">
+    <h1>Friends</h1>
+    <a class="btn" href="{% url 'accounts:profile_search' %}">Find players</a>
+</div>
 
-<h2>Friend requests</h2>
-{% for friend_request in incoming_requests %}
-    <div>
-        {{ friend_request.from_user.get_display_name }} ({{ friend_request.from_user.username }})
-        <form method="post" action="{% url 'accounts:accept_friend_request' friend_request.from_user.username %}" style="display:inline">
-            {% csrf_token %}<button type="submit">Accept</button>
-        </form>
-        <form method="post" action="{% url 'accounts:decline_friend_request' friend_request.from_user.username %}" style="display:inline">
-            {% csrf_token %}<button type="submit">Decline</button>
-        </form>
-    </div>
-{% empty %}
-    <p>No friend requests.</p>
-{% endfor %}
+<section class="panel">
+    <h2>Friend requests <span class="count">· {{ incoming_requests|length }}</span></h2>
+    <ul class="person-list">
+        {% for friend_request in incoming_requests %}
+            {% with person=friend_request.from_user %}
+            <li class="person">
+                <span class="avatar" aria-hidden="true">{% if person.profile_picture %}<img src="{{ person.profile_picture.url }}" alt="">{% else %}{{ person.get_display_name|first }}{% endif %}</span>
+                <span class="person-name">
+                    <a href="{% url 'accounts:profile_detail' person.username %}">{{ person.get_display_name }}</a>
+                    <small>@{{ person.username }}</small>
+                </span>
+                <span class="person-actions">
+                    <form method="post" action="{% url 'accounts:accept_friend_request' person.username %}">
+                        {% csrf_token %}<button type="submit">Accept</button>
+                    </form>
+                    <form method="post" action="{% url 'accounts:decline_friend_request' person.username %}">
+                        {% csrf_token %}<button type="submit" class="btn-secondary">Decline</button>
+                    </form>
+                </span>
+            </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+    {% if not incoming_requests %}<p class="empty">No friend requests.</p>{% endif %}
+</section>
 
-<h2>My friends</h2>
-{% for friend in friends %}
-    <div>
-        {{ friend.get_display_name }} ({{ friend.username }})
-        <a href="{% url 'chat:conversation' friend.username %}">Chat</a>
-        <form method="post" action="{% url 'accounts:remove_friend' friend.username %}" style="display:inline">
-            {% csrf_token %}<button type="submit">Remove</button>
-        </form>
-    </div>
-{% empty %}
-    <p>You have no friends yet.</p>
-{% endfor %}
+<section class="panel">
+    <h2>My friends <span class="count">· {{ friends|length }}</span></h2>
+    <ul class="person-list">
+        {% for friend in friends %}
+            <li class="person">
+                <span class="avatar" aria-hidden="true">{% if friend.profile_picture %}<img src="{{ friend.profile_picture.url }}" alt="">{% else %}{{ friend.get_display_name|first }}{% endif %}</span>
+                <span class="person-name">
+                    <a href="{% url 'accounts:profile_detail' friend.username %}">{{ friend.get_display_name }}</a>
+                    <small>@{{ friend.username }}</small>
+                </span>
+                <span class="person-actions">
+                    <a class="btn btn-secondary" href="{% url 'chat:conversation' friend.username %}">Chat</a>
+                    <form method="post" action="{% url 'accounts:remove_friend' friend.username %}">
+                        {% csrf_token %}<button type="submit" class="btn-danger">Remove</button>
+                    </form>
+                </span>
+            </li>
+        {% endfor %}
+    </ul>
+    {% if not friends %}<p class="empty">You have no friends yet. <a href="{% url 'accounts:profile_search' %}">Find players</a> to add some.</p>{% endif %}
+</section>
 
 {% if outgoing_requests %}
-    <h2>Sent requests</h2>
-    {% for friend_request in outgoing_requests %}
-        <p>{{ friend_request.to_user.get_display_name }} ({{ friend_request.to_user.username }}) - pending</p>
-    {% endfor %}
+<section class="panel">
+    <h2>Sent requests <span class="count">· {{ outgoing_requests|length }}</span></h2>
+    <ul class="person-list">
+        {% for friend_request in outgoing_requests %}
+            {% with person=friend_request.to_user %}
+            <li class="person">
+                <span class="avatar" aria-hidden="true">{% if person.profile_picture %}<img src="{{ person.profile_picture.url }}" alt="">{% else %}{{ person.get_display_name|first }}{% endif %}</span>
+                <span class="person-name">
+                    <a href="{% url 'accounts:profile_detail' person.username %}">{{ person.get_display_name }}</a>
+                    <small>@{{ person.username }}</small>
+                </span>
+                <span class="badge pending">Pending</span>
+            </li>
+            {% endwith %}
+        {% endfor %}
+    </ul>
+</section>
 {% endif %}
 {% endblock %}

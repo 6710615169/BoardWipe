@@ -1,33 +1,59 @@
 {% extends "accounts/base.html" %}
+{% block title %}Find players{% endblock %}
 {% block content %}
-<h2>Find Players</h2>
+<h1>Find players</h1>
 
-<form method="get">
-  <input type="text" name="q" value="{{ q }}" placeholder="Name or username">
+<div class="search-layout">
+  <form method="get" class="panel" role="search">
+    <h2>Filters</h2>
+    <div class="field">
+      <label for="search-q">Name</label>
+      <input id="search-q" type="text" name="q" value="{{ q }}" placeholder="Name or username">
+    </div>
+    <div class="field">
+      <label for="search-genre">Favorite genre</label>
+      <select id="search-genre" name="genre">
+        <option value="">Any genre</option>
+        {% for value, label in genre_choices %}
+          <option value="{{ value }}" {% if genre == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="search-known">Knows</label>
+      <input id="search-known" type="text" name="known" value="{{ known }}" placeholder="Boardgame they know">
+    </div>
+    <div class="field">
+      <label for="search-favorite">Favorite game</label>
+      <input id="search-favorite" type="text" name="favorite" value="{{ favorite }}" placeholder="Favorite boardgame">
+    </div>
+    <div class="field">
+      <label for="search-owned">Owns</label>
+      <input id="search-owned" type="text" name="owned" value="{{ owned }}" placeholder="Boardgame they own">
+    </div>
+    <button type="submit">Search</button>
+  </form>
 
-  <select name="genre">
-    <option value="">Any genre</option>
-    {% for value, label in genre_choices %}
-      <option value="{{ value }}" {% if genre == value %}selected{% endif %}>{{ label }}</option>
-    {% endfor %}
-  </select>
-
-  <input type="text" name="known" value="{{ known }}" placeholder="Boardgame they know">
-  <input type="text" name="favorite" value="{{ favorite }}" placeholder="Favorite boardgame">
-  <input type="text" name="owned" value="{{ owned }}" placeholder="Boardgame they own">
-  <button type="submit" class="btn">Search</button>
-</form>
-
-{% for u in users_found %}
-  <div>
-    {% if u.profile_picture %}<img src="{{ u.profile_picture.url }}" alt="" width="50">{% endif %}
-    <a href="{% url 'accounts:profile_detail' u.username %}">{{ u.get_display_name }}</a>
-    {% if u.favorite_genre %}<small>({{ u.get_favorite_genre_display }})</small>{% endif %}
-    {% for g in u.profile_boardgames.all %}
-  <small>{{ g.name }}{% if g.is_known %} [Known]{% endif %}{% if g.is_owned %} [Owned]{% endif %}</small>
-{% endfor %}
-  </div>
-{% empty %}
-  <p>No profiles found.</p>
-{% endfor %}
+  <section class="panel">
+    <h2>Players <span class="count">· {{ users_found|length }}</span></h2>
+    <ul class="person-list">
+      {% for u in users_found %}
+        <li class="person">
+          <span class="avatar" aria-hidden="true">{% if u.profile_picture %}<img src="{{ u.profile_picture.url }}" alt="">{% else %}{{ u.get_display_name|first }}{% endif %}</span>
+          <span class="person-name">
+            <a href="{% url 'accounts:profile_detail' u.username %}">{{ u.get_display_name }}</a>
+            <small>@{{ u.username }}{% if u.favorite_genre %} · {{ u.get_favorite_genre_display }}{% endif %}</small>
+            <span class="badges">
+              {% for g in u.profile_boardgames.all %}
+                <span class="badge{% if g.is_owned %} owned{% endif %}">{{ g.name }}{% if g.is_known %} [Known]{% endif %}{% if g.is_owned %} [Owned]{% endif %}</span>
+              {% endfor %}
+            </span>
+          </span>
+          <span class="person-actions"><a class="btn btn-secondary" href="{% url 'accounts:profile_detail' u.username %}">View</a></span>
+        </li>
+      {% endfor %}
+    </ul>
+    {% if not users_found %}<p class="empty">No profiles found.</p>{% endif %}
+  </section>
+</div>
 {% endblock %}

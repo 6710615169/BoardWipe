@@ -1,27 +1,54 @@
 {% extends "accounts/base.html" %}
+{% block title %}{{ profile_user.get_display_name }} · Profile{% endblock %}
 {% block content %}
-<h2>{{ profile_user.get_display_name }}</h2>
-<a href="{% url 'accounts:profile_search' %}" class="btn">Back to search</a>
-{% if profile_user.profile_picture %}
-  <img src="{{ profile_user.profile_picture.url }}" alt="" width="150">
-{% endif %}
+<div class="edit-header">
+  <span></span>
+  <a href="{% url 'accounts:profile_search' %}">&larr; Back to search</a>
+</div>
 
-<form method="POST"
-      action="{% url 'accounts:send_friend_request' profile_user.username %}">
-    {% csrf_token %}
-    <button type="submit">Send friend request</button>
-</form>
+<article class="profile-card">
+  <header class="profile-top">
+    <div class="profile-avatar">
+      {% if profile_user.profile_picture %}
+        <img src="{{ profile_user.profile_picture.url }}" alt="Profile picture of {{ profile_user.get_display_name }}">
+      {% else %}
+        <span class="initial" aria-hidden="true">{{ profile_user.get_display_name|first }}</span>
+      {% endif %}
+    </div>
+    <div class="profile-identity">
+      <h1>{{ profile_user.get_display_name }}</h1>
+      <p class="handle">@{{ profile_user.username }}</p>
+    </div>
+    <form method="POST" action="{% url 'accounts:send_friend_request' profile_user.username %}">
+      {% csrf_token %}
+      <button type="submit">Send friend request</button>
+    </form>
+  </header>
 
-<p>{{ profile_user.bio }}</p>
-<p>Favorite genre: {{ profile_user.get_favorite_genre_display|default:"Not set" }}</p>
-<p>Favorite boardgame: {{ profile_user.favorite_boardgame|default:"Not set" }}</p>
+  <div class="profile-body">
+    <section class="profile-section">
+      <h2>About</h2>
+      {% if profile_user.bio %}<p>{{ profile_user.bio|linebreaksbr }}</p>{% else %}<p class="empty">No bio yet.</p>{% endif %}
+    </section>
 
-<h3>Boardgames {% if profile_boardgames %}({{ profile_boardgames|length }}){% endif %}</h3>
-{% if profile_boardgames %}
-  {% include "accounts/_boardgame_cards.html" %}
-{% else %}
-  <p>No games added yet.</p>
-{% endif %}
-{% include "accounts/_freetime_calendar.html" %}
-<a href="{% url 'accounts:profile_search' %}" class="btn">Back to search</a>
+    <section class="profile-section">
+      <h2>Details</h2>
+      <dl class="detail-list">
+        <dt>Favorite genre</dt><dd>{{ profile_user.get_favorite_genre_display|default:"Not set" }}</dd>
+        <dt>Favorite boardgame</dt><dd>{{ profile_user.favorite_boardgame|default:"Not set" }}</dd>
+      </dl>
+    </section>
+
+    <section class="profile-section">
+      <h2>Boardgames {% if profile_boardgames %}<span class="count">({{ profile_boardgames|length }})</span>{% endif %}</h2>
+      {% if profile_boardgames %}
+        {% include "accounts/_boardgame_cards.html" %}
+      {% else %}
+        <p class="empty">No games added yet.</p>
+      {% endif %}
+    </section>
+
+    {% include "accounts/_freetime_calendar.html" %}
+  </div>
+</article>
 {% endblock %}

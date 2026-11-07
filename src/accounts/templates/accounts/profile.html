@@ -3,42 +3,7 @@
 {% block title %}{{ profile_user.get_display_name }} · Profile{% endblock %}
 
 {% block content %}
-<style>
-    .profile-card { border: 1px solid #d0d7de; border-radius: 12px; overflow: hidden; background: #fff; }
-    .profile-banner { height: 72px; background: linear-gradient(135deg, #2b6cb0, #4c8fd6); }
-    .profile-top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; padding: 0 20px 16px; margin-top: -48px; }
-    .profile-avatar { width: 112px; height: 112px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
-        border: 4px solid #fff; background: #e2ebf5; box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
-        display: flex; align-items: center; justify-content: center; }
-    .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .profile-avatar .initial { font-size: 44px; font-weight: bold; color: #2b6cb0; text-transform: uppercase; }
-    .profile-identity { flex: 1; min-width: 180px; padding-bottom: 4px; }
-    .profile-identity h1 { border: none; padding: 0; margin: 0; font-size: 1.6em; word-break: break-word; }
-    .profile-identity .handle { color: #57606a; margin: 2px 0 0; }
-    .btn-edit { display: inline-block; padding: 9px 18px; border-radius: 6px; background: #2b6cb0; color: #fff;
-        text-decoration: none; font-weight: bold; white-space: nowrap; margin-bottom: 4px; }
-    .btn-edit:hover, .btn-edit:focus { background: #245a94; }
-    .btn-edit:focus-visible { outline: 3px solid #9cc3ec; outline-offset: 2px; }
-    .profile-body { padding: 4px 20px 20px; }
-    .profile-section { padding: 16px 0; border-top: 1px solid #eaeef2; }
-    .profile-section h2 { font-size: .8em; text-transform: uppercase; letter-spacing: .06em; color: #57606a; margin: 0 0 10px; }
-    .profile-section p { margin: 0; line-height: 1.5; }
-    .detail-list { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; }
-    .detail-list dt { color: #57606a; }
-    .detail-list dd { margin: 0; word-break: break-word; }
-    .empty { color: #8c959f; font-style: italic; }
-    .empty a { font-style: normal; }
-    .count { font-weight: normal; color: #8c959f; }
-    @media (max-width: 480px) {
-        .profile-top { flex-direction: column; align-items: flex-start; }
-        .detail-list { grid-template-columns: 1fr; gap: 2px; }
-        .detail-list dd { margin-bottom: 8px; }
-    }
-</style>
-
 <article class="profile-card">
-    <div class="profile-banner" aria-hidden="true"></div>
-
     <header class="profile-top">
         <div class="profile-avatar">
             {% if profile_user.profile_picture %}
@@ -53,7 +18,7 @@
             <p class="handle">@{{ profile_user.username }}</p>
         </div>
 
-        <a class="btn-edit" href="{% url 'accounts:profile_editing' %}">Edit profile</a>
+        <a class="btn btn-secondary" href="{% url 'accounts:profile_editing' %}">Edit profile</a>
     </header>
 
     <div class="profile-body">

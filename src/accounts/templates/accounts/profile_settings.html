@@ -1,28 +1,27 @@
 {% extends "accounts/base.html" %}
-{% block title %}Profile Settings{% endblock %}
+{% block title %}Settings{% endblock %}
 {% block content %}
-<h1>Profile Settings</h1>
+<h1>Settings</h1>
 
-<h2>Email notifications</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ notification_form.as_p }}
-  {% if not user.email %}
-    <p>You have no email address yet, so no emails can be sent. Add one on
-      <a href="{% url 'accounts:profile_editing' %}">your profile</a>.</p>
-  {% endif %}
-  <button type="submit" name="save_notifications" value="1">Save notification settings</button>
-</form>
+<section class="edit-section">
+  <h2>Email notifications</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ notification_form.as_p }}
+    {% if not user.email %}
+      <p class="section-hint">You have no email address yet, so no emails can be sent. Add one on
+        <a href="{% url 'accounts:profile_editing' %}">your profile</a>.</p>
+    {% endif %}
+    <button type="submit" name="save_notifications" value="1">Save notification settings</button>
+  </form>
+</section>
 
-<h2>Change password</h2>
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Change password</button>
-</form>
-
-<form method="post" action="{% url 'accounts:logout' %}">
-  {% csrf_token %}
-  <button type="submit">Log out</button>
-</form>
+<section class="edit-section">
+  <h2>Change password</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Change password</button>
+  </form>
+</section>
 {% endblock %}

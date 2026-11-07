@@ -1,16 +1,19 @@
 {% extends "accounts/base.html" %}
 {% block title %}Home{% endblock %}
 {% block content %}
-<h1>Home</h1>
 {% if user.is_authenticated %}
-  <p>Hello, {{ user.get_display_name }}!</p>
-  <a href="{% url 'accounts:profile' %}">My Profile</a>
-  <form method="post" action="{% url 'accounts:logout' %}">
-    {% csrf_token %}
-    <button type="submit">Log out</button>
-  </form>
+  <h1>Hello, {{ user.get_display_name }}!</h1>
+  <p class="muted">What would you like to do?</p>
+  <div class="home-links">
+    <a href="{% url 'accounts:profile_search' %}"><b>Find players</b><span>Search by genre or the games they own.</span></a>
+    <a href="{% url 'accounts:friends' %}"><b>Friends</b><span>Answer requests and start a chat.</span></a>
+    <a href="{% url 'accounts:profile' %}"><b>My profile</b><span>Your games and free time.</span></a>
+  </div>
 {% else %}
-  <a href="{% url 'accounts:login' %}">Log in</a>
-  <a href="{% url 'accounts:register' %}">Register</a>
+  <div class="auth-card tile">
+    <h1>Welcome to BoardWipe</h1>
+    <p class="muted">Find people to play boardgames with.</p>
+    <p><a class="btn" href="{% url 'accounts:register' %}">Register</a> <a class="btn btn-secondary" href="{% url 'accounts:login' %}">Log in</a></p>
+  </div>
 {% endif %}
 {% endblock %}

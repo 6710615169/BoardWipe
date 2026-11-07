@@ -3,51 +3,6 @@
 {% block title %}Add Boardgame{% endblock %}
 
 {% block content %}
-<style>
-    .edit-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px;
-        border-bottom: 2px solid #444; padding-bottom: 8px; margin-bottom: 20px; }
-    .edit-header h1 { border: none; padding: 0; margin: 0; }
-    .edit-header a { color: #2b6cb0; }
-    .catalog-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-    .catalog-top p { margin: 0; color: #57606a; font-size: .9em; }
-    .btn-add-new { padding: 8px 16px; border-radius: 6px; background: #2b6cb0; color: #fff; text-decoration: none;
-        font-weight: bold; font-size: .9em; white-space: nowrap; }
-    .btn-add-new:hover, .btn-add-new:focus { background: #245a94; }
-    .catalog-search { border: 1px solid #d0d7de; border-radius: 12px; padding: 14px; background: #fff; margin-bottom: 16px; }
-    .search-row { display: flex; gap: 8px; }
-    .search-row input[type=search] { flex: 1; min-width: 0; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
-    .search-row button { margin: 0; }
-    .filter-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
-    .filter-row label { margin: 0; font-size: .8em; color: #57606a; font-weight: bold; }
-    .filter-row select { margin-top: 2px; }
-    .catalog-notice { background: #fff8e1; color: #6b5100; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: .9em; }
-    .catalog-count { color: #57606a; font-size: .9em; margin: 0 0 10px; }
-    .catalog-grid { list-style: none; padding: 0; margin: 0; display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
-    .catalog-card { position: relative; border: 1px solid #d0d7de; border-radius: 10px; overflow: hidden; background: #fff;
-        display: flex; flex-direction: column; }
-    .catalog-cover { aspect-ratio: 1 / 1; background: #e2ebf5; display: flex; align-items: center; justify-content: center; }
-    .catalog-cover img { width: 100%; height: 100%; object-fit: cover; }
-    .catalog-cover .initial { font-size: 40px; font-weight: bold; color: #2b6cb0; text-transform: uppercase; }
-    .catalog-info { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-    .catalog-name { font-weight: bold; word-break: break-word; line-height: 1.25; }
-    .catalog-meta { font-size: .8em; color: #57606a; display: flex; justify-content: space-between; gap: 6px; }
-    .catalog-rating { color: #8a5a00; font-weight: bold; white-space: nowrap; }
-    .catalog-genres { display: flex; flex-wrap: wrap; gap: 4px; }
-    .catalog-genres span { font-size: .72em; padding: 2px 8px; border-radius: 10px; background: #eef; color: #333; }
-    .pick-form { position: absolute; top: 8px; right: 8px; margin: 0; }
-    .btn-pick { margin: 0; width: 36px; height: 36px; padding: 0; border-radius: 50%; font-size: 22px; line-height: 36px;
-        font-weight: bold; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
-    .added-tag { position: absolute; top: 8px; right: 8px; padding: 4px 10px; border-radius: 14px; background: #d4edda;
-        color: #155724; font-size: .8em; font-weight: bold; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
-    .pagination { display: flex; justify-content: center; align-items: center; gap: 14px; margin: 18px 0; font-size: .9em; }
-    .pagination a { color: #2b6cb0; }
-    .empty { text-align: center; color: #57606a; padding: 24px 0; }
-    @media (max-width: 480px) {
-        .filter-row { grid-template-columns: 1fr; }
-    }
-</style>
-
 <div class="edit-header">
     <h1>Add a boardgame</h1>
     <a href="{% url 'accounts:profile_editing' %}">&larr; Back to edit profile</a>
@@ -55,7 +10,7 @@
 
 <div class="catalog-top">
     <p>Can't find your game?</p>
-    <a class="btn-add-new" href="{% url 'accounts:boardgame_create' %}">+ Add new</a>
+    <a class="btn" href="{% url 'accounts:boardgame_create' %}">+ Add new</a>
 </div>
 
 <form class="catalog-search" method="get" id="catalog-search" role="search">
@@ -130,7 +85,7 @@
         </nav>
     {% endif %}
 {% else %}
-    <p class="empty">
+    <p class="catalog-empty">
         No games match your search.
         <a href="{% url 'accounts:boardgame_create' %}">Add it as a new game</a>.
     </p>

@@ -1,64 +1,56 @@
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Boardgame Profile{% endblock %}</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 640px; margin: 40px auto; color: #222; }
-        h1 { border-bottom: 2px solid #444; padding-bottom: 8px; }
-        label { display: block; margin-top: 14px; font-weight: bold; }
-        input[type=text], input[type=email], select, textarea {
-            width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;
-            border: 1px solid #ccc; border-radius: 4px;
-        }
-        button { margin-top: 20px; padding: 10px 20px; background: #2b6cb0; color: #fff;
-            border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #245a94; }
-        .messages { list-style: none; padding: 0; }
-        .messages li { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 10px; }
-        .messages li.error { background: #f8d7da; color: #721c24; }
-        .errorlist { color: #b00020; }
-        .tag-list span { display: inline-block; background: #eef; padding: 4px 10px; margin: 3px;
-            border-radius: 12px; font-size: 0.9em; }
-        .profile-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
-        .profile-picture-wrap { width: 150px; height: 150px; border-radius: 50%; overflow: hidden;
-            border: 3px solid #2b6cb0; background: #f7f7f7; display: flex; align-items: center; justify-content: center; }
-        .profile-picture-wrap img { width: 150px; height: 150px; object-fit: cover; }
-        .profile-picture-field { padding: 16px; border: 1px solid #d0d7de; border-radius: 8px; background: #f8fafc; margin-top: 8px; }
-        .chat-log { height: 400px; overflow-y: auto; margin: 16px 0; padding: 12px; border: 1px solid #d0d7de;
-            border-radius: 8px; background: #f8fafc; }
-        .chat-message { width: fit-content; max-width: 80%; margin-bottom: 10px; padding: 8px 12px; background: #fff;
-            border: 1px solid #d0d7de; border-radius: 8px; overflow-wrap: anywhere; }
-        .chat-message-own { margin-left: auto; background: #e3effb; }
-        .chat-message small { display: block; color: #666; }
-        .chat-mention { color: #2b6cb0; font-weight: bold; }
-        .chat-suggestions button { margin: 4px 4px 0 0; padding: 4px 10px; }
-        nav { margin-bottom: 20px; }
-        nav a { margin-right: 12px; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Boardgame Profile{% endblock %} · BoardWipe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;800&family=Source+Sans+3:wght@400;600;700&display=swap">
+    <link rel="stylesheet" href="{% static 'accounts/boardwipe.css' %}">
 </head>
 <body>
-    <nav>
-        {% if user.is_authenticated %}
-            Signed in as <strong>{{ user.username }}</strong> |
-            <a href="{% url 'accounts:home' %}">Home</a>
-            <a href="{% url 'accounts:profile' %}">My Profile</a>
-            <a href="{% url 'accounts:friends' %}">Friends</a>
-            <a href="{% url 'accounts:profile_search' %}">Find players</a>
-            <a href="{% url 'accounts:profile_settings' %}">Settings</a>
-        {% else %}
-            <a href="{% url 'accounts:home' %}">Home</a>
-            <a href="{% url 'accounts:login' %}">Log in</a>
-            <a href="{% url 'accounts:register' %}">Register</a>
+    {% with page=request.resolver_match.url_name %}
+    <header class="site-header">
+        <nav class="site-nav" aria-label="Main">
+            <a class="logo" href="{% url 'accounts:home' %}"><span class="logo-tile" aria-hidden="true"></span>BoardWipe</a>
+            <a class="nav-link" href="{% url 'accounts:home' %}" {% if page == 'home' %}aria-current="page"{% endif %}>Home</a>
+            {% if user.is_authenticated %}
+                <a class="nav-link" href="{% url 'accounts:profile_search' %}" {% if page == 'profile_search' %}aria-current="page"{% endif %}>Find players</a>
+                <a class="nav-link" href="{% url 'accounts:friends' %}" {% if page == 'friends' %}aria-current="page"{% endif %}>Friends</a>
+                <span class="nav-spacer"></span>
+                <details class="account-menu">
+                    <summary>
+                        <span>{{ user.get_display_name }}</span>
+                        <span class="avatar-tile" aria-hidden="true">
+                            {% if user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="">{% else %}{{ user.get_display_name|first }}{% endif %}
+                        </span>
+                    </summary>
+                    <div class="menu">
+                        <a href="{% url 'accounts:profile' %}" {% if page == 'profile' %}aria-current="page"{% endif %}>My profile</a>
+                        <a href="{% url 'accounts:profile_settings' %}" {% if page == 'profile_settings' %}aria-current="page"{% endif %}>Settings</a>
+                        <form method="post" action="{% url 'accounts:logout' %}">
+                            {% csrf_token %}
+                            <button type="submit">Log out</button>
+                        </form>
+                    </div>
+                </details>
+            {% else %}
+                <span class="nav-spacer"></span>
+                <a class="nav-link" href="{% url 'accounts:login' %}" {% if page == 'login' %}aria-current="page"{% endif %}>Log in</a>
+                <a class="nav-link" href="{% url 'accounts:register' %}" {% if page == 'register' %}aria-current="page"{% endif %}>Register</a>
+            {% endif %}
+        </nav>
+    </header>
+    {% endwith %}
+
+    <main class="page">
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+            </ul>
         {% endif %}
-    </nav>
 
-    {% if messages %}
-        <ul class="messages">
-            {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
-        </ul>
-    {% endif %}
-
-    {% block content %}{% endblock %}
+        {% block content %}{% endblock %}
+    </main>
 </body>
 </html>

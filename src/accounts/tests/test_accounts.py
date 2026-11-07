@@ -411,6 +411,18 @@ class HomeViewTest(TestCase):
         self.assertTemplateUsed(response, "accounts/home.html")
 
 
+class NavigationTest(TestCase):
+    def test_nav_marks_current_page_and_offers_log_out(self):
+        user = User.objects.create_user("navuser", password="pass12345")
+        self.client.force_login(user)
+        response = self.client.get(reverse("accounts:friends"))
+        self.assertContains(
+            response,
+            f'href="{reverse("accounts:friends")}" aria-current="page"',
+        )
+        self.assertContains(response, f'action="{reverse("accounts:logout")}"')
+
+
 class FriendTest(TestCase):
     def setUp(self):
         self.alice = User.objects.create_user(username="alice", password="secret123")

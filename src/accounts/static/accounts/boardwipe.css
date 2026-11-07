@@ -1,0 +1,140 @@
+/* BoardWipe "Wood & Tiles" theme (US-08). */
+:root {
+    --table: #e7ecee;      /* page background */
+    --walnut: #6b4423;     /* header */
+    --walnut-ink: #fbf3e6;
+    --gold: #f2c14e;       /* active page, focus */
+    --gold-dark: #b8892a;
+    --tile: #fffdf8;       /* panels */
+    --seam: #e6dccb;       /* panel border */
+    --edge: #c9a27a;       /* panel bottom edge */
+    --ink: #2a221b;
+    --muted: #76695b;
+    --oak: #8a4b22;        /* primary button */
+    --oak-dark: #5e3115;
+    --red: #a4262c;
+    --green: #2f6b3a;
+    --green-bg: #e3efe0;
+    --font-heading: "Bitter", Georgia, serif;
+    --font-body: "Source Sans 3", "Segoe UI", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--table);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+h1, h2, h3 { font-family: var(--font-heading); line-height: 1.2; }
+h1 { font-size: 1.8rem; margin: 0 0 16px; }
+h2 { font-size: 1.3rem; }
+a { color: var(--oak); }
+
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+
+/* ---------- Header ---------- */
+.site-header { background: var(--walnut); color: var(--walnut-ink); }
+.site-nav {
+    max-width: 960px; margin: 0 auto; padding: 0 16px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px 18px; min-height: 56px;
+}
+.site-nav a { color: var(--walnut-ink); text-decoration: none; }
+.site-nav .nav-link { opacity: .85; padding: 16px 2px 13px; border-bottom: 3px solid transparent; }
+.site-nav .nav-link:hover { opacity: 1; }
+.site-nav .nav-link[aria-current="page"] { opacity: 1; font-weight: 700; border-bottom-color: var(--gold); }
+.logo { font-family: var(--font-heading); font-weight: 800; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; margin-right: 8px; }
+.logo-tile { width: 18px; height: 18px; background: var(--gold); border-radius: 3px; box-shadow: 0 3px 0 var(--gold-dark); transform: rotate(-8deg); }
+.nav-spacer { flex: 1; }
+
+/* Account menu: a <details> dropdown, no JavaScript needed. */
+.account-menu { position: relative; }
+.account-menu summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 0; }
+.account-menu summary::-webkit-details-marker { display: none; }
+.avatar-tile {
+    width: 32px; height: 32px; border-radius: 7px; overflow: hidden;
+    background: var(--gold); color: var(--ink); box-shadow: 0 3px 0 var(--gold-dark);
+    font-family: var(--font-heading); font-weight: 800; text-transform: uppercase;
+    display: grid; place-items: center;
+}
+.avatar-tile img { width: 100%; height: 100%; object-fit: cover; }
+.account-menu .menu {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; width: 190px;
+    background: var(--tile); border: 1px solid var(--seam); border-bottom: 4px solid var(--edge); border-radius: 8px;
+    padding: 6px; display: grid; box-shadow: 0 10px 20px -10px rgba(42, 34, 27, .4);
+}
+.account-menu .menu a, .account-menu .menu button {
+    display: block; width: 100%; text-align: left; padding: 8px 10px; border-radius: 5px;
+    color: var(--ink); font: inherit; background: none; border: 0; margin: 0; box-shadow: none; cursor: pointer;
+}
+.account-menu .menu a:hover, .account-menu .menu button:hover { background: #f3e9d9; transform: none; }
+.account-menu .menu a[aria-current="page"] { font-weight: 700; }
+.account-menu .menu form { margin: 0; border-top: 1px solid var(--seam); padding-top: 4px; margin-top: 4px; }
+.account-menu .menu button { color: var(--red); font-weight: 600; }
+
+/* ---------- Page ---------- */
+.page { max-width: 960px; margin: 0 auto; padding: 28px 16px 48px; }
+
+/* A panel styled like a game tile. */
+.tile { background: var(--tile); border: 1px solid var(--seam); border-bottom: 4px solid var(--edge); border-radius: 8px; padding: 16px; }
+
+/* ---------- Buttons ---------- */
+button, .btn {
+    display: inline-block; font: inherit; font-weight: 700; font-size: .95rem; text-decoration: none;
+    padding: 8px 16px; margin-top: 16px; border-radius: 6px; border: 1.5px solid transparent; cursor: pointer;
+    background: var(--oak); color: #fff; box-shadow: 0 3px 0 var(--oak-dark);
+    transition: transform .08s, box-shadow .08s;
+}
+button:hover, .btn:hover { background: #7a421d; }
+button:active, .btn:active { transform: translateY(3px); box-shadow: none; }
+.btn-secondary { background: var(--tile); color: var(--oak); border-color: var(--edge); box-shadow: 0 2px 0 var(--edge); }
+.btn-secondary:hover { background: #f8f0e3; }
+.btn-danger { background: none; color: var(--red); box-shadow: none; text-decoration: underline; padding-inline: 6px; }
+.btn-danger:hover { background: none; color: #7a1a1f; }
+button:disabled { background: #e9e4dc; color: #a39887; box-shadow: none; cursor: not-allowed; transform: none; }
+@media (prefers-reduced-motion: reduce) { button, .btn { transition: none; } }
+
+/* ---------- Forms ---------- */
+label { display: block; margin-top: 14px; font-weight: 700; font-size: .95rem; }
+input[type=text], input[type=email], input[type=password], input[type=number], input[type=date],
+input[type=time], input[type=url], input[type=search], select, textarea {
+    width: 100%; padding: 9px 11px; margin-top: 4px; font: inherit; color: var(--ink);
+    background: #fff; border: 1.5px solid var(--seam); border-radius: 6px;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--oak); }
+.helptext { display: block; color: var(--muted); font-size: .85rem; }
+.errorlist { color: var(--red); padding-left: 18px; }
+
+/* ---------- Flash messages ---------- */
+.messages { list-style: none; padding: 0; margin: 0 0 18px; display: grid; gap: 8px; }
+.messages li { padding: 10px 14px; border-radius: 8px; border: 1px solid #bcd6b6; background: var(--green-bg); color: var(--green); font-weight: 600; }
+.messages li.error { border-color: #e8bcb8; background: #f8e3e1; color: var(--red); }
+
+/* ---------- Badges ---------- */
+.tag-list span { display: inline-block; background: #f3e9d9; color: #7a4f22; padding: 2px 10px; margin: 3px; border-radius: 4px; font-size: .85em; font-weight: 700; }
+
+/* ---------- Older shared classes, restyled to match ---------- */
+.profile-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
+.profile-picture-wrap { width: 150px; height: 150px; border-radius: 12px; overflow: hidden;
+    border: 3px solid var(--edge); background: var(--tile); display: flex; align-items: center; justify-content: center; }
+.profile-picture-wrap img { width: 150px; height: 150px; object-fit: cover; }
+.profile-picture-field { padding: 16px; border: 1px solid var(--seam); border-radius: 8px; background: var(--tile); margin-top: 8px; }
+
+.chat-log { height: 400px; overflow-y: auto; margin: 16px 0; padding: 12px; border: 1px solid var(--seam);
+    border-bottom: 4px solid var(--edge); border-radius: 8px; background: var(--tile); }
+.chat-message { width: fit-content; max-width: 80%; margin-bottom: 10px; padding: 8px 12px; background: #fff;
+    border: 1px solid var(--seam); border-radius: 10px; overflow-wrap: anywhere; }
+.chat-message-own { margin-left: auto; background: #f4e4d2; border-color: #e7cfb3; }
+.chat-message small { display: block; color: var(--muted); }
+.chat-mention { color: var(--oak); font-weight: 700; }
+.chat-suggestions button { margin: 4px 4px 0 0; padding: 4px 10px; }
+
+@media (max-width: 560px) {
+    .site-nav { gap: 0 14px; }
+    .logo { width: 100%; padding-top: 12px; }
+    .site-nav .nav-link { padding: 10px 2px 8px; }
+}

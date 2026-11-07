@@ -1,0 +1,124 @@
+<style>
+    .availability {
+        margin-top: 20px;
+    }
+
+    .availability-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 14px;
+    }
+
+    .availability-scroll {
+        overflow-x: auto;
+    }
+
+    .availability-table {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+        border-collapse: collapse;
+    }
+
+    .availability-table caption {
+        font-size: 1.1rem;
+        font-weight: bold;
+        padding: 10px;
+    }
+
+    .availability-table th,
+    .availability-table td {
+        border: 1px solid #d0d7de;
+        padding: 8px;
+    }
+
+    .availability-table th {
+        background: #f6f8fa;
+    }
+
+    .availability-table td {
+        height: 100px;
+        vertical-align: top;
+    }
+
+    .availability-blank {
+        background: #f6f8fa;
+    }
+
+    .availability-slot {
+        margin-top: 6px;
+        padding: 6px;
+        border-radius: 5px;
+        background: #e2ebf5;
+        color: #17436f;
+        font-size: 0.85rem;
+    }
+
+    .availability-slot a {
+        display: block;
+    }
+</style>
+
+<section class="availability">
+    <h2>Free time</h2>
+
+    <div class="availability-controls">
+        <form method="get">
+            <label for="availability-month">Month</label>
+            <input id="availability-month" type="month" name="month" value="{{ calendar_month }}" min="1900-01"
+                max="2100-12" required>
+            <button type="submit">Show</button>
+        </form>
+
+        {% if request.user == profile_user %}
+        <a href="{% url 'accounts:freetime_add' %}">
+            Add free time
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="availability-scroll">
+        <table class="availability-table">
+            <caption>{{ calendar_heading }}</caption>
+            <thead>
+                <tr>
+                    {% for day in calendar_days %}
+                    <th scope="col">{{ day }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for week in calendar_weeks %}
+                <tr>
+                    {% for cell in week %}
+                    {% if cell.day %}
+                    <td>
+                        <strong>{{ cell.day }}</strong>
+
+                        {% for slot in cell.slots %}
+                        <div class="availability-slot">
+                            {{ slot.start_time|time:"H:i" }}
+                            –
+                            {{ slot.end_time|time:"H:i" }}
+
+                            {% if request.user == profile_user %}
+                            <a href="{% url 'accounts:freetime_edit' slot.pk %}">
+                                Edit
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </td>
+                    {% else %}
+                    <td class="availability-blank"></td>
+                    {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>

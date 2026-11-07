@@ -58,8 +58,8 @@
             <label for="{{ field.id_for_label }}">{{ field.label }} <span class="optional">(optional)</span></label>
             <div class="picture-editor">
                 <div class="game-preview" id="game-preview">
-                    {% if form.instance.picture %}
-                        <img src="{{ form.instance.picture.url }}" alt="Current picture of {{ form.instance.name }}">
+                    {% if form.instance.picture_src %}
+                        <img src="{{ form.instance.picture_src }}" alt="Current picture of {{ form.instance.name }}">
                     {% else %}
                         <span class="initial" aria-hidden="true">{{ form.instance.name|first|default:"?" }}</span>
                     {% endif %}

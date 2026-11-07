@@ -1,7 +1,11 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import FreeTime
-from .models import ProfileBoardgame, User
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import transaction
+from django.db.models import F
+from django.db.models.functions import Lower
+
+from .models import Boardgame, FreeTime, ProfileBoardgame, User
 
 
 def validate_email_is_unused(email, exclude_pk=None):
@@ -117,38 +121,121 @@ def validate_known_or_owned(form):
         )
 
 
-class ProfileBoardgameForm(forms.ModelForm):
-    """
-    Add a boardgame to the given user's profile.
+def normalize_game_name(name):
+    """Match ProfileBoardgame.save(), so " catan " is compared as "catan"."""
+    return " ".join(name.split())
 
-    The one-game-per-user rule is checked here because the form has no user
-    field, and Django skips constraints that involve fields missing from the form.
+
+class BoardgameSearchForm(forms.Form):
+    """Search, filter and sort the catalog on the "Add a game" page."""
+
+    SORT_CHOICES = [
+        ("rating", "Rating: high to low"),
+        ("rating_asc", "Rating: low to high"),
+        ("name", "Name: A to Z"),
+    ]
+
+    q = forms.CharField(required=False, max_length=100, label="Search")
+    genre = forms.ChoiceField(
+        required=False, choices=[("", "All genres")] + User.GENRE_CHOICES
+    )
+    players = forms.ChoiceField(
+        required=False,
+        choices=[("", "Any number")]
+        + [(key, label) for key, (label, _) in Boardgame.PLAYER_FILTERS.items()],
+        label="Players",
+    )
+    sort = forms.ChoiceField(required=False, choices=SORT_CHOICES, label="Sort by")
+
+    def filter_and_sort(self, games):
+        """
+        Apply the genre/players filters and the sort to a Boardgame queryset.
+        Invalid values are ignored. The text search is left to the view, which
+        also matches the ids Wikidata returned.
+        """
+        data = self.cleaned_data if self.is_bound and self.is_valid() else {}
+        if data.get("genre"):
+            games = games.filter(Boardgame.genre_filter(data["genre"]))
+        if data.get("players"):
+            games = games.filter(Boardgame.PLAYER_FILTERS[data["players"]][1])
+        sort = data.get("sort") or "rating"
+        if sort == "name":
+            return games.order_by(Lower("name"))
+        if sort == "rating_asc":
+            return games.order_by(F("rating").asc(nulls_last=True), Lower("name"))
+        return games.order_by(F("rating").desc(nulls_last=True), Lower("name"))
+
+
+class BoardgameCreateForm(forms.ModelForm):
     """
+    "Add new": put a game that is not in the catalog into it, and onto the
+    user's profile. Every field is required so the new card is complete.
+    """
+
+    genre_choices = forms.MultipleChoiceField(
+        choices=User.GENRE_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        label="Genre",
+        help_text="Pick one or more.",
+        error_messages={"required": "Pick at least one genre."},
+    )
 
     class Meta:
-        model = ProfileBoardgame
-        fields = ["name", "picture", "is_known", "is_owned"]
-        labels = BOARDGAME_FLAG_LABELS
+        model = Boardgame
+        fields = ["name", "cover", "min_players", "max_players"]
+        labels = {
+            "name": "Boardgame name",
+            "cover": "Game cover",
+            "min_players": "Minimum players",
+            "max_players": "Maximum players",
+        }
 
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
-        self.instance.user = user
+        self.user = user
+        for name in ("cover", "min_players", "max_players"):
+            self.fields[name].required = True
+        for name in ("min_players", "max_players"):
+            field = self.fields[name]
+            # Replace the model field's generic ">= 0" check with one 1-99
+            # range, so a bad value shows a single, plain message.
+            field.min_value, field.max_value = 1, 99
+            field.validators = [
+                validator
+                for validator in field.validators
+                if not isinstance(validator, (MinValueValidator, MaxValueValidator))
+            ] + [
+                MinValueValidator(1, "A game needs at least 1 player."),
+                MaxValueValidator(99, "Enter 99 players or fewer."),
+            ]
+            field.widget.attrs.update(min=1, max=99)
 
     def clean_name(self):
-        # Match the model's save() so " catan " is checked as "catan".
-        name = " ".join(self.cleaned_data["name"].split())
-        if ProfileBoardgame.objects.filter(
-            user=self.instance.user, name__iexact=name
-        ).exists():
-            raise forms.ValidationError(
-                "This game is already on your profile. Edit it to change the picture."
-            )
+        name = normalize_game_name(self.cleaned_data["name"])
+        if ProfileBoardgame.objects.filter(user=self.user, name__iexact=name).exists():
+            raise forms.ValidationError("This game is already on your profile.")
         return name
 
     def clean(self):
         cleaned_data = super().clean()
-        validate_known_or_owned(self)
+        low, high = cleaned_data.get("min_players"), cleaned_data.get("max_players")
+        if low and high and low > high:
+            self.add_error(
+                "max_players", "Maximum players cannot be less than minimum players."
+            )
         return cleaned_data
+
+    @transaction.atomic
+    def save(self):
+        """Create the catalog game and add it to the user's profile as known."""
+        game = super().save(commit=False)
+        game.genres = Boardgame.format_genres(self.cleaned_data["genre_choices"])
+        game.created_by = self.user
+        game.save()
+        ProfileBoardgame.objects.create(
+            user=self.user, name=game.name, boardgame=game, is_known=True
+        )
+        return game
 
 
 class ProfileBoardgameEditForm(forms.ModelForm):

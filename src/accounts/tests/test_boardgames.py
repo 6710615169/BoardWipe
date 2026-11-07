@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from PIL import Image
 
-from accounts.forms import ProfileBoardgameEditForm, ProfileBoardgameForm, ProfileForm
+from accounts.forms import ProfileBoardgameEditForm, ProfileForm
 from accounts.models import ProfileBoardgame, User
 
 TEST_MEDIA_ROOT = tempfile.mkdtemp()
@@ -22,7 +22,9 @@ def make_image(name="game.png", color="blue"):
     return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/png")
 
 
-@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT)
+# GAME_API_ENABLED=False keeps tests off the network; catalog tests turn it on
+# with a mock.
+@override_settings(MEDIA_ROOT=TEST_MEDIA_ROOT, GAME_API_ENABLED=False)
 class ProfileBoardgameTestCase(TestCase):
     """Shared setup: two users and a throwaway MEDIA_ROOT for uploads."""
 
@@ -95,71 +97,6 @@ class ProfileBoardgameModelTest(ProfileBoardgameTestCase):
         self.assertFalse(ProfileBoardgame.objects.exists())
 
 
-class ProfileBoardgameFormTest(ProfileBoardgameTestCase):
-    def test_creates_game_with_picture_and_flags(self):
-        form = ProfileBoardgameForm(
-            {"name": "Catan", "is_known": "on", "is_owned": "on"},
-            {"picture": make_image()},
-            user=self.alice,
-        )
-        self.assertTrue(form.is_valid(), form.errors)
-        game = form.save()
-        self.assertEqual(game.user, self.alice)
-        self.assertEqual(game.name, "Catan")
-        self.assertTrue(game.is_known)
-        self.assertTrue(game.is_owned)
-        self.assertTrue(game.picture.name.startswith("boardgame_pictures/"))
-
-    def test_known_is_ticked_and_owned_unticked_by_default(self):
-        form = ProfileBoardgameForm(user=self.alice)
-        self.assertTrue(form["is_known"].value())
-        self.assertFalse(form["is_owned"].value())
-
-    def test_picture_is_optional(self):
-        form = ProfileBoardgameForm(
-            {"name": "Chess", "is_known": "on"}, user=self.alice
-        )
-        self.assertTrue(form.is_valid(), form.errors)
-        self.assertFalse(form.save().picture)
-
-    def test_same_user_cannot_add_the_same_game_again(self):
-        ProfileBoardgame.objects.create(user=self.alice, name="Catan")
-        form = ProfileBoardgameForm(
-            {"name": " cAtAn ", "is_owned": "on"},
-            {"picture": make_image()},
-            user=self.alice,
-        )
-        self.assertFalse(form.is_valid())
-        self.assertIn("name", form.errors)
-
-    def test_another_user_can_add_a_game_someone_already_has(self):
-        ProfileBoardgame.objects.create(user=self.alice, name="Catan")
-        form = ProfileBoardgameForm({"name": "Catan", "is_known": "on"}, user=self.bob)
-        self.assertTrue(form.is_valid(), form.errors)
-
-    def test_neither_known_nor_owned_is_rejected(self):
-        form = ProfileBoardgameForm({"name": "Catan"}, user=self.alice)
-        self.assertFalse(form.is_valid())
-        self.assertIn("is_known", form.errors)
-
-    def test_blank_name_is_rejected(self):
-        form = ProfileBoardgameForm({"name": "   ", "is_known": "on"}, user=self.alice)
-        self.assertFalse(form.is_valid())
-        self.assertIn("name", form.errors)
-
-    def test_non_image_upload_is_rejected(self):
-        not_an_image = SimpleUploadedFile(
-            "game.png", b"not an image", content_type="image/png"
-        )
-        form = ProfileBoardgameForm(
-            {"name": "Catan", "is_known": "on"},
-            {"picture": not_an_image},
-            user=self.alice,
-        )
-        self.assertFalse(form.is_valid())
-        self.assertIn("picture", form.errors)
-
-
 class ProfileBoardgameEditFormTest(ProfileBoardgameTestCase):
     def test_cannot_rename_the_game(self):
         # Renaming would let a user dodge the one-row-per-game rule.
@@ -180,50 +117,6 @@ class ProfileBoardgameEditFormTest(ProfileBoardgameTestCase):
 class ProfileFormWithoutKnownBoardgamesTest(ProfileBoardgameTestCase):
     def test_known_boardgames_text_box_is_gone_from_the_form(self):
         self.assertNotIn("known_boardgames", ProfileForm().fields)
-
-
-class AddProfileBoardgameViewTest(ProfileBoardgameTestCase):
-    url_name = "accounts:boardgame_add"
-
-    def test_requires_login(self):
-        response = self.client.get(reverse(self.url_name))
-        self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.url.startswith(reverse("accounts:login")))
-
-    def test_get_renders_form(self):
-        self.client.force_login(self.alice)
-        response = self.client.get(reverse(self.url_name))
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "accounts/boardgame_add.html")
-        self.assertIsInstance(response.context["form"], ProfileBoardgameForm)
-
-    def test_valid_post_adds_game_and_redirects_to_profile(self):
-        self.client.force_login(self.alice)
-        response = self.client.post(
-            reverse(self.url_name),
-            {
-                "name": "Catan",
-                "is_known": "on",
-                "is_owned": "on",
-                "picture": make_image(),
-            },
-        )
-        self.assertRedirects(response, reverse("accounts:profile_editing"))
-        game = ProfileBoardgame.objects.get(user=self.alice)
-        self.assertEqual(game.name, "Catan")
-        self.assertTrue(game.is_owned)
-        self.assertTrue(game.picture)
-
-    def test_duplicate_post_rerenders_with_error_and_saves_nothing(self):
-        ProfileBoardgame.objects.create(user=self.alice, name="Catan")
-        self.client.force_login(self.alice)
-        response = self.client.post(
-            reverse(self.url_name),
-            {"name": "CATAN", "is_known": "on", "picture": make_image()},
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("name", response.context["form"].errors)
-        self.assertEqual(ProfileBoardgame.objects.filter(user=self.alice).count(), 1)
 
 
 class EditProfileBoardgameViewTest(ProfileBoardgameTestCase):

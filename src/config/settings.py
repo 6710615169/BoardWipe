@@ -180,6 +180,11 @@ LOGGING = {
     },
 }
 
+# The game catalog is filled from Wikidata (free, no key). "Add a game" searches
+# it live, and `manage.py import_games` bulk-imports popular games. Set the
+# environment variable GAME_API_ENABLED=0 to use only games saved locally.
+GAME_API_ENABLED = os.environ.get("GAME_API_ENABLED", "1") != "0"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

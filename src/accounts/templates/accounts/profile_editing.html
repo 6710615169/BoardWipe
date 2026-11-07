@@ -92,6 +92,11 @@
             <div class="field{% if field.errors %} has-error{% endif %}">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                 {{ field }}
+                {% if profile_boardgames %}
+                    <small>{{ field.help_text }}</small>
+                {% else %}
+                    <small>Add games in <a href="#boardgames">Your boardgames</a> below to pick a favorite.</small>
+                {% endif %}
                 {% if field.errors %}{{ field.errors }}{% endif %}
             </div>
             {% endwith %}

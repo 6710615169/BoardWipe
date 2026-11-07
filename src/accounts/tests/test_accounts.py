@@ -160,6 +160,7 @@ class ProfilePictureAcceptanceTest(TestCase):
 
     @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
     def test_post_with_simple_uploaded_file_returns_302_and_saves_picture(self):
+        ProfileBoardgame.objects.create(user=self.user, name="Catan")
         self.client.force_login(self.user)
 
         image = Image.new("RGB", (10, 10), color="blue")
@@ -190,6 +191,13 @@ class ProfilePictureAcceptanceTest(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.profile_picture.name)
         self.assertIn("profile.png", self.user.profile_picture.name)
+
+    def test_favorite_boardgame_must_be_one_of_your_games(self):
+        ProfileBoardgame.objects.create(user=self.user, name="Azul")
+        form = ProfileForm({"favorite_boardgame": "Azul"}, instance=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        form = ProfileForm({"favorite_boardgame": "Risk"}, instance=self.user)
+        self.assertIn("favorite_boardgame", form.errors)
 
     def test_profile_form_includes_profile_picture_field(self):
         form = ProfileForm()

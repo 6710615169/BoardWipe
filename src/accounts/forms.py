@@ -67,6 +67,30 @@ class ProfileForm(forms.ModelForm):
         self._old_picture_name = (
             self.instance.profile_picture.name if self.instance.pk else ""
         )
+        self.fields["favorite_boardgame"] = forms.ChoiceField(
+            choices=self._favorite_choices(),
+            required=False,
+            label="Favorite boardgame",
+            help_text="Pick one of the games on your profile.",
+        )
+
+    def _favorite_choices(self):
+        """The user's own games; an older favorite not on the list stays valid."""
+        names = []
+        if self.instance.pk:
+            names = sorted(
+                self.instance.profile_boardgames.values_list("name", flat=True),
+                key=str.casefold,
+            )
+        choices = [("", "No favorite yet")] + [(name, name) for name in names]
+        current = self.instance.favorite_boardgame
+        same_game = [name for name in names if name.casefold() == current.casefold()]
+        if same_game:
+            # Select the list entry even if the saved text differs in case.
+            self.initial["favorite_boardgame"] = same_game[0]
+        elif current:
+            choices.append((current, f"{current} (not on your list)"))
+        return choices
 
     def save(self, commit=True):
         user = super().save(commit=commit)

@@ -338,7 +338,18 @@ class CreateBoardgameTest(ProfileBoardgameTestCase):
     def test_rejects_zero_players(self):
         data = self.data(min_players=0)
         form = BoardgameCreateForm(data, {"cover": data.pop("cover")}, user=self.alice)
-        self.assertIn("min_players", form.errors)
+        self.assertEqual(form.errors["min_players"], ["A game needs at least 1 player."])
+
+    def test_negative_players_show_one_plain_message(self):
+        data = self.data(min_players=-3)
+        form = BoardgameCreateForm(data, {"cover": data.pop("cover")}, user=self.alice)
+        self.assertEqual(form.errors["min_players"], ["A game needs at least 1 player."])
+        self.assertNotIn("greater than or equal to 0", str(form.errors))
+
+    def test_rejects_more_than_99_players(self):
+        data = self.data(max_players=100)
+        form = BoardgameCreateForm(data, {"cover": data.pop("cover")}, user=self.alice)
+        self.assertEqual(form.errors["max_players"], ["Enter 99 players or fewer."])
 
     def test_rejects_a_game_already_on_the_profile(self):
         ProfileBoardgame.objects.create(user=self.alice, name="my game")

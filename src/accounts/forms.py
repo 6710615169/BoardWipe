@@ -196,9 +196,19 @@ class BoardgameCreateForm(forms.ModelForm):
         for name in ("cover", "min_players", "max_players"):
             self.fields[name].required = True
         for name in ("min_players", "max_players"):
-            self.fields[name].widget.attrs.update(min=1, max=99)
-            self.fields[name].validators.append(MinValueValidator(1))
-            self.fields[name].validators.append(MaxValueValidator(99))
+            field = self.fields[name]
+            # Replace the model field's generic ">= 0" check with one 1-99
+            # range, so a bad value shows a single, plain message.
+            field.min_value, field.max_value = 1, 99
+            field.validators = [
+                validator
+                for validator in field.validators
+                if not isinstance(validator, (MinValueValidator, MaxValueValidator))
+            ] + [
+                MinValueValidator(1, "A game needs at least 1 player."),
+                MaxValueValidator(99, "Enter 99 players or fewer."),
+            ]
+            field.widget.attrs.update(min=1, max=99)
 
     def clean_name(self):
         name = normalize_game_name(self.cleaned_data["name"])

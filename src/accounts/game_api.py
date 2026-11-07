@@ -101,6 +101,8 @@ def is_enabled():
 def _get_json(url, params):
     if cache.get(FAILED_KEY):
         raise GameAPIError("Wikidata failed recently; not retrying yet")
+    if not url.startswith("https://"):
+        raise GameAPIError(f"Refusing non-HTTPS URL: {url}")
     request = urllib.request.Request(
         url + "?" + urllib.parse.urlencode(params),
         headers={
@@ -109,7 +111,10 @@ def _get_json(url, params):
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        # The scheme is checked above, so file:// and similar can't get here.
+        with urllib.request.urlopen(  # nosec B310
+            request, timeout=TIMEOUT_SECONDS
+        ) as response:
             return json.loads(response.read())
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
         cache.set(FAILED_KEY, True, RETRY_AFTER_SECONDS)

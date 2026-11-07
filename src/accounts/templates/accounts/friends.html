@@ -47,7 +47,7 @@
                 <span class="person-actions">
                     <a class="btn btn-secondary" href="{% url 'chat:conversation' friend.username %}">Chat</a>
                     <form method="post" action="{% url 'accounts:remove_friend' friend.username %}">
-                        {% csrf_token %}<button type="submit" class="btn-danger">Remove</button>
+                        {% csrf_token %}<button type="submit" class="btn-remove">Remove</button>
                     </form>
                 </span>
             </li>

@@ -83,7 +83,7 @@ a { color: var(--oak); }
 .tile { background: var(--tile); border: 1px solid var(--seam); border-bottom: 4px solid var(--edge); border-radius: 8px; padding: 16px; }
 
 /* ---------- Buttons ---------- */
-button, .btn, .btn-secondary, .btn-danger, .btn-add {
+button, .btn, .btn-secondary, .btn-add {
     display: inline-block; font: inherit; font-weight: 700; font-size: .95rem; text-decoration: none;
     padding: 8px 16px; margin-top: 16px; border-radius: 6px; border: 1.5px solid transparent; cursor: pointer;
     background: var(--oak); color: #fff; box-shadow: 0 3px 0 var(--oak-dark);
@@ -93,8 +93,6 @@ button:hover, .btn:hover { background: #7a421d; }
 button:active, .btn:active { transform: translateY(3px); box-shadow: none; }
 .btn-secondary { background: var(--tile); color: var(--oak); border-color: var(--edge); box-shadow: 0 2px 0 var(--edge); }
 .btn-secondary:hover { background: #f8f0e3; }
-.btn-danger { background: none; color: var(--red); box-shadow: none; text-decoration: underline; padding-inline: 6px; }
-.btn-danger:hover { background: none; color: #7a1a1f; }
 button:disabled { background: #e9e4dc; color: #a39887; box-shadow: none; cursor: not-allowed; transform: none; }
 @media (prefers-reduced-motion: reduce) { button, .btn { transition: none; } }
 
@@ -220,7 +218,6 @@ input[type=checkbox]:focus-visible { outline: 3px solid var(--gold); outline-off
 .person-actions { display: flex; align-items: center; gap: 8px; }
 .person-actions form { margin: 0; }
 .person-actions button, .person-actions .btn { margin-top: 0; padding: 6px 14px; font-size: .9rem; }
-.person-actions .btn-danger { padding-inline: 6px; }
 .panel > .empty { margin: 14px 0 0; }
 
 .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }

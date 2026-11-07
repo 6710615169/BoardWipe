@@ -21,11 +21,11 @@
             </div>
             {% if manage %}
                 <div class="game-actions">
-                    <a href="{% url 'accounts:boardgame_edit' game.pk %}">Edit</a>
+                    <a class="btn btn-secondary" href="{% url 'accounts:boardgame_edit' game.pk %}">Edit</a>
                     <form method="post" action="{% url 'accounts:boardgame_delete' game.pk %}"
                           onsubmit="return confirm('Remove {{ game.name|escapejs }} from your profile?');">
                         {% csrf_token %}
-                        <button type="submit">Remove</button>
+                        <button type="submit" class="btn-remove">Remove</button>
                     </form>
                 </div>
             {% endif %}

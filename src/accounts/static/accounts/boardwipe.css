@@ -168,8 +168,21 @@ input:focus, select:focus, textarea:focus { border-color: var(--oak); }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 fieldset.field { border: none; margin-left: 0; margin-right: 0; padding: 0; }
 
-.checkbox-group { display: flex; flex-wrap: wrap; gap: 8px 24px; }
-.checkbox-group label { display: flex; align-items: center; gap: 8px; font-weight: normal; margin: 0; cursor: pointer; }
+.checkbox-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.checkbox-group label { display: flex; align-items: center; gap: 12px; margin: 0; padding: 14px 16px; cursor: pointer;
+    background: #fff; border: 1.5px solid var(--seam); border-bottom-width: 4px; border-radius: 8px; font-weight: 600; }
+.checkbox-group label:hover { border-color: var(--edge); }
+.checkbox-group label:has(input:checked) { background: #f3e9d9; border-color: var(--oak); color: var(--oak); }
+
+/* Checkboxes in the theme colors */
+input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 0; flex-shrink: 0;
+    display: inline-grid; place-content: center; vertical-align: middle; cursor: pointer;
+    background: #fff; border: 2px solid var(--edge); border-radius: 5px; }
+input[type=checkbox]::after { content: ""; width: 9px; height: 5px; border-left: 3px solid #fff; border-bottom: 3px solid #fff;
+    transform: translateY(-1px) rotate(-45deg); opacity: 0; }
+input[type=checkbox]:checked { background: var(--oak); border-color: var(--oak); }
+input[type=checkbox]:checked::after { opacity: 1; }
+input[type=checkbox]:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .genre-options > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .genre-options label { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px; background: #fff;
     border: 1.5px solid var(--seam); border-radius: 6px; font-weight: normal; cursor: pointer; font-size: .9em; }
@@ -188,7 +201,7 @@ fieldset.field { border: none; margin-left: 0; margin-right: 0; padding: 0; }
 
 .form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--seam); }
 .form-actions.sticky { position: sticky; bottom: 0; background: var(--table); }
-.form-actions button, .form-actions .btn { margin-top: 0; }
+.form-actions > * { margin-top: 0; }
 .btn-add { margin-top: 0; padding: 6px 14px; font-size: .9rem; }
 
 /* Avatar tile used in lists */
@@ -232,11 +245,11 @@ fieldset.field { border: none; margin-left: 0; margin-right: 0; padding: 0; }
 .game-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .game-badge { font-size: .75em; font-weight: 700; padding: 2px 8px; border-radius: 4px; background: #f3e9d9; color: #7a4f22; }
 .game-badge.owned { background: var(--green-bg); color: var(--green); }
-.game-actions { display: flex; justify-content: space-between; align-items: center; padding: 0 10px 10px; font-size: .9em; }
-.game-actions a { font-weight: 600; }
+.game-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 10px 12px; }
 .game-actions form { margin: 0; }
-.game-actions button { margin: 0; padding: 0; background: none; box-shadow: none; color: var(--red); font-size: 1em; font-weight: 600; text-decoration: underline; }
-.game-actions button:hover { background: none; color: #7a1a1f; }
+.game-actions .btn-secondary, .game-actions .btn-remove { width: 100%; margin: 0; padding: 5px 0; font-size: .85rem; text-align: center; }
+.btn-remove { background: var(--tile); color: var(--red); border-color: #e8bcb8; box-shadow: 0 2px 0 #e8bcb8; }
+.btn-remove:hover { background: #fbeceb; }
 
 /* ---------- Profile ---------- */
 .profile-card { background: var(--tile); border: 1px solid var(--seam); border-bottom: 4px solid var(--edge); border-radius: 8px; }

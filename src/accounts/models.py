@@ -51,6 +51,10 @@ class User(AbstractUser):
         help_text="Upload a profile picture for your account (max 5 MB).",
     )
     friends = models.ManyToManyField("self", blank=True)
+    email_notifications = models.BooleanField(
+        default=True,
+        help_text="Email me when someone sends me a message or friend request.",
+    )
 
     class Meta(AbstractUser.Meta):
         constraints = [

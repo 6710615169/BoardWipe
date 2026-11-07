@@ -7,6 +7,7 @@ from accounts.models import ProfileBoardgame
 
 from .forms import MessageForm
 from .models import Message
+from .notifications import notify_new_message
 
 
 def taggable_boardgames(user, friend):
@@ -43,7 +44,8 @@ def conversation_view(request, username):
     if request.method == "POST":
         form = MessageForm(request.POST, sender=request.user, recipient=friend)
         if form.is_valid():
-            form.save()
+            message = form.save()
+            notify_new_message(message)
             return redirect("chat:conversation", username=friend.username)
     else:
         form = MessageForm(sender=request.user, recipient=friend)

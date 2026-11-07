@@ -16,8 +16,11 @@ from django.views.decorators.http import (
     require_POST,
 )
 
+from chat.notifications import notify_friend_request
+
 from .forms import (
     FreeTimeForm,
+    NotificationSettingsForm,
     ProfileBoardgameEditForm,
     ProfileBoardgameForm,
     ProfileForm,
@@ -246,19 +249,38 @@ def profile_editing_view(request):
 
 @login_required
 def profile_settings_view(request):
-    """Let a signed-in user change their own password."""
+    """
+    Let a signed-in user change their password and email notification setting.
+
+    The page holds two forms; the submit button's name says which one was sent.
+    """
+    form = PasswordChangeForm(user=request.user)
+    notification_form = NotificationSettingsForm(instance=request.user)
+
     if request.method == "POST":
-        form = PasswordChangeForm(user=request.user, data=request.POST)
+        if "save_notifications" in request.POST:
+            notification_form = NotificationSettingsForm(
+                request.POST, instance=request.user
+            )
+            if notification_form.is_valid():
+                notification_form.save()
+                messages.success(request, "Notification settings saved.")
+                return redirect("accounts:profile_settings")
+        else:
+            form = PasswordChangeForm(user=request.user, data=request.POST)
+            if form.is_valid():
+                user = form.save()
+                # Rotating the password invalidates the session hash; refresh it
+                # so the user is not logged out by their own password change.
+                update_session_auth_hash(request, user)
+                messages.success(request, "Password changed successfully.")
+                return redirect("accounts:profile_settings")
 
-        if form.is_valid():
-            user = form.save()
-            update_session_auth_hash(request, user)
-            messages.success(request, "Password changed successfully.")
-            return redirect("accounts:profile_settings")
-    else:
-        form = PasswordChangeForm(user=request.user)
-
-    return render(request, "accounts/profile_settings.html", {"form": form})
+    return render(
+        request,
+        "accounts/profile_settings.html",
+        {"form": form, "notification_form": notification_form},
+    )
 
 
 @login_required
@@ -302,10 +324,12 @@ def send_friend_request(request, username):
         )
 
     else:
-        FriendRequest.objects.get_or_create(
+        friend_request, created = FriendRequest.objects.get_or_create(
             from_user=request.user,
             to_user=other,
         )
+        if created:
+            notify_friend_request(friend_request)
         messages.success(
             request,
             f"Friend request sent to {other.get_display_name()}.",

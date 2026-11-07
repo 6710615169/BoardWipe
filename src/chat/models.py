@@ -27,3 +27,35 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender} -> {self.recipient}: {self.body[:30]}"
+
+
+class ConversationNotification(models.Model):
+    """
+    When the recipient was last emailed about messages from one sender.
+
+    One row per (recipient, sender) direction. It is the throttle: a burst of
+    messages sends one email, not one per message.
+    """
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="+",
+    )
+    last_notified_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recipient", "sender"],
+                name="unique_conversation_notification",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.sender} -> {self.recipient} at {self.last_notified_at}"

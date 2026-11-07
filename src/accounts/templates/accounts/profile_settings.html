@@ -3,6 +3,17 @@
 {% block content %}
 <h1>Profile Settings</h1>
 
+<h2>Email notifications</h2>
+<form method="post">
+  {% csrf_token %}
+  {{ notification_form.as_p }}
+  {% if not user.email %}
+    <p>You have no email address yet, so no emails can be sent. Add one on
+      <a href="{% url 'accounts:profile_editing' %}">your profile</a>.</p>
+  {% endif %}
+  <button type="submit" name="save_notifications" value="1">Save notification settings</button>
+</form>
+
 <h2>Change password</h2>
 <form method="post">
   {% csrf_token %}

@@ -98,7 +98,9 @@
             {% else %}
                 <p class="empty">No games listed yet. <a href="{% url 'accounts:profile_editing' %}#boardgames">Add the games you know or own</a></p>
             {% endif %}
-        </section>
+                </section>
+
+        {% include "accounts/_freetime_calendar.html" %}
     </div>
 </article>
 {% endblock %}

@@ -102,10 +102,14 @@ def notify_new_message(message):
     """
     recipient, sender = message.recipient, message.sender
     if not can_email(recipient):
+        logger.info(
+            "Message email to %s skipped: notifications off or no email", recipient
+        )
         return False
 
     previous = _claim_slot(recipient, sender)
     if previous is False:
+        logger.info("Message email to %s skipped: throttled", recipient)
         return False
 
     try:
@@ -124,9 +128,10 @@ def notify_new_message(message):
             },
         )
     except Exception:  # noqa: BLE001 - SMTP/network errors are many and varied
-        logger.exception("Could not send message notification email")
+        logger.exception("Message email to %s failed", recipient)
         _release_slot(recipient, sender, previous)
         return False
+    logger.info("Message email to %s sent", recipient)
     return True
 
 
@@ -134,6 +139,10 @@ def notify_friend_request(friend_request):
     """Email the recipient about a new friend request. Never raises."""
     recipient, sender = friend_request.to_user, friend_request.from_user
     if not can_email(recipient):
+        logger.info(
+            "Friend request email to %s skipped: notifications off or no email",
+            recipient,
+        )
         return False
     try:
         _send(
@@ -148,6 +157,7 @@ def notify_friend_request(friend_request):
             },
         )
     except Exception:  # noqa: BLE001
-        logger.exception("Could not send friend request notification email")
+        logger.exception("Friend request email to %s failed", recipient)
         return False
+    logger.info("Friend request email to %s sent", recipient)
     return True

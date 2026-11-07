@@ -166,6 +166,26 @@ class ThrottleTests(NotificationTestCase):
         self.assertEqual(row.last_notified_at, old)
 
 
+class EmailStatusLogTests(NotificationTestCase):
+    def test_sent_email_is_logged(self):
+        with self.assertLogs("chat.notifications", level="INFO") as logs:
+            self.send()
+        self.assertIn("Message email to alice sent", logs.output[0])
+
+    def test_throttled_email_is_logged(self):
+        self.send("first")
+        with self.assertLogs("chat.notifications", level="INFO") as logs:
+            self.send("second")
+        self.assertIn("Message email to alice skipped: throttled", logs.output[0])
+
+    def test_opted_out_email_is_logged(self):
+        self.alice.email_notifications = False
+        self.alice.save()
+        with self.assertLogs("chat.notifications", level="INFO") as logs:
+            self.send()
+        self.assertIn("skipped: notifications off or no email", logs.output[0])
+
+
 class OptOutTests(NotificationTestCase):
     def test_default_is_opted_in(self):
         self.assertTrue(self.alice.email_notifications)

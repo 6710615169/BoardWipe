@@ -14,8 +14,14 @@ import os
 import secrets
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Local secrets live in .env at the repo root (git-ignored). Variables already
+# set in the environment win, so hosting settings are never overridden.
+load_dotenv(BASE_DIR.parent / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -163,6 +169,16 @@ SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
 NOTIFICATION_THROTTLE_MINUTES = int(
     os.environ.get("NOTIFICATION_THROTTLE_MINUTES", "15")
 )
+
+# Print whether each notification email was sent, skipped or failed.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {
+        "chat.notifications": {"handlers": ["console"], "level": "INFO"},
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

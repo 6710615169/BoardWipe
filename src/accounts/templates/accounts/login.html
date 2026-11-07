@@ -1,14 +1,22 @@
 {% extends "accounts/base.html" %}
 {% block title %}Log in{% endblock %}
 {% block content %}
-<div class="auth-card tile">
-  <h1>Log in</h1>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <input type="hidden" name="next" value="{{ next }}">
-    <button type="submit">Log in</button>
-  </form>
-  <p class="switch">Don't have an account? <a href="{% url 'accounts:register' %}">Register here</a></p>
+<div class="auth-split">
+  <aside class="auth-side">
+    <p class="eyebrow">Welcome back</p>
+    <h2>Your table is waiting.</h2>
+    <p>Check your friend requests, plan your free time and pick tonight's game.</p>
+    {% include "accounts/_tile_board.html" %}
+  </aside>
+  <div class="auth-form">
+    <h1>Log in</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit">Log in</button>
+    </form>
+    <p class="switch">Don't have an account? <a href="{% url 'accounts:register' %}">Register here</a></p>
+  </div>
 </div>
 {% endblock %}

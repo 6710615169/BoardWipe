@@ -81,7 +81,37 @@ def free_time_calendar_context(user, selected_month):
 
 
 def home(request):
-    return render(request, "accounts/home.html")
+    """Landing page for visitors, a personal dashboard for signed-in users."""
+    if not request.user.is_authenticated:
+        context = {
+            "player_count": User.objects.count(),
+            "catalog_count": Boardgame.objects.count(),
+        }
+        return render(request, "accounts/home.html", context)
+
+    user = request.user
+    friends = user.friends.all()
+    # Players you are not connected to yet, sharing your favorite genre if set.
+    suggested = (
+        User.objects.exclude(pk=user.pk)
+        .exclude(pk__in=friends.values("pk"))
+        .exclude(received_friend_requests__from_user=user)
+        .exclude(sent_friend_requests__to_user=user)
+        .order_by("-date_joined")
+    )
+    if user.favorite_genre:
+        suggested = suggested.filter(favorite_genre=user.favorite_genre)
+
+    context = {
+        "incoming_requests": user.received_friend_requests.select_related("from_user"),
+        "friends": friends[:5],
+        "friend_count": friends.count(),
+        "my_games": user.profile_boardgames.all()[:6],
+        "game_count": user.profile_boardgames.count(),
+        "free_times": user.free_times.filter(date__gte=timezone.localdate())[:4],
+        "suggested_players": suggested[:4],
+    }
+    return render(request, "accounts/home.html", context)
 
 
 def register_view(request):

@@ -2,18 +2,158 @@
 {% block title %}Home{% endblock %}
 {% block content %}
 {% if user.is_authenticated %}
-  <h1>Hello, {{ user.get_display_name }}!</h1>
-  <p class="muted">What would you like to do?</p>
-  <div class="home-links">
-    <a href="{% url 'accounts:profile_search' %}"><b>Find players</b><span>Search by genre or the games they own.</span></a>
-    <a href="{% url 'accounts:friends' %}"><b>Friends</b><span>Answer requests and start a chat.</span></a>
-    <a href="{% url 'accounts:profile' %}"><b>My profile</b><span>Your games and free time.</span></a>
-  </div>
+
+{# ---------------- Dashboard ---------------- #}
+<section class="welcome tile">
+    <div class="welcome-text">
+        <p class="eyebrow">{% now "l j F" %}</p>
+        <h1>Hello, {{ user.get_display_name }}!</h1>
+        <div class="stat-chips">
+            <a href="{% url 'accounts:friends' %}"><b>{{ incoming_requests|length }}</b> friend request{{ incoming_requests|length|pluralize }}</a>
+            <a href="{% url 'accounts:friends' %}"><b>{{ friend_count }}</b> friend{{ friend_count|pluralize }}</a>
+            <a href="{% url 'accounts:profile' %}"><b>{{ game_count }}</b> game{{ game_count|pluralize }}</a>
+        </div>
+    </div>
+    <div class="welcome-actions">
+        <a class="btn" href="{% url 'accounts:profile_search' %}">Find players</a>
+        <a class="btn btn-secondary" href="{% url 'accounts:boardgame_add' %}">+ Add a game</a>
+    </div>
+</section>
+
+<div class="dash">
+    <div class="dash-main">
+        {% if incoming_requests %}
+        <section class="panel">
+            <h2>Waiting for you <span class="count">· {{ incoming_requests|length }}</span></h2>
+            <ul class="person-list">
+                {% for friend_request in incoming_requests %}
+                    {% with person=friend_request.from_user %}
+                    <li class="person">
+                        <span class="avatar" aria-hidden="true">{% if person.profile_picture %}<img src="{{ person.profile_picture.url }}" alt="">{% else %}{{ person.get_display_name|first }}{% endif %}</span>
+                        <span class="person-name">
+                            <a href="{% url 'accounts:profile_detail' person.username %}">{{ person.get_display_name }}</a>
+                            <small>wants to be your friend</small>
+                        </span>
+                        <span class="person-actions">
+                            <form method="post" action="{% url 'accounts:accept_friend_request' person.username %}">
+                                {% csrf_token %}<button type="submit">Accept</button>
+                            </form>
+                            <form method="post" action="{% url 'accounts:decline_friend_request' person.username %}">
+                                {% csrf_token %}<button type="submit" class="btn-secondary">Decline</button>
+                            </form>
+                        </span>
+                    </li>
+                    {% endwith %}
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        <section class="panel">
+            <h2>My boardgames <span class="count">· {{ game_count }}</span></h2>
+            {% if my_games %}
+                <div class="panel-body">{% include "accounts/_boardgame_cards.html" with profile_boardgames=my_games %}</div>
+                {% if game_count > 6 %}<p class="panel-more"><a href="{% url 'accounts:profile' %}">See all {{ game_count }} games &rarr;</a></p>{% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <span class="empty-tiles" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <p><b>No games yet.</b> Add the games you own or know, so players can find you.</p>
+                    <a class="btn" href="{% url 'accounts:boardgame_add' %}">Add your first game</a>
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="panel">
+            <h2>Players you might like</h2>
+            <ul class="person-list">
+                {% for person in suggested_players %}
+                    <li class="person">
+                        <span class="avatar" aria-hidden="true">{% if person.profile_picture %}<img src="{{ person.profile_picture.url }}" alt="">{% else %}{{ person.get_display_name|first }}{% endif %}</span>
+                        <span class="person-name">
+                            <a href="{% url 'accounts:profile_detail' person.username %}">{{ person.get_display_name }}</a>
+                            <small>@{{ person.username }}{% if person.favorite_genre %} · {{ person.get_favorite_genre_display }}{% endif %}</small>
+                        </span>
+                        <span class="person-actions">
+                            <form method="post" action="{% url 'accounts:send_friend_request' person.username %}">
+                                {% csrf_token %}<button type="submit" class="btn-secondary">Add friend</button>
+                            </form>
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+            {% if not suggested_players %}<p class="empty">No new players to suggest right now. <a href="{% url 'accounts:profile_search' %}">Search all players</a></p>{% endif %}
+        </section>
+    </div>
+
+    <aside class="dash-side">
+        <section class="panel">
+            <h2>My free time</h2>
+            {% if free_times %}
+                <ul class="slot-list">
+                    {% for slot in free_times %}
+                        <li>
+                            <span class="slot-date"><b>{{ slot.date|date:"j" }}</b>{{ slot.date|date:"M" }}</span>
+                            <span><b>{{ slot.date|date:"l" }}</b><small>{{ slot.start_time|time:"H:i" }} – {{ slot.end_time|time:"H:i" }}</small></span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty">No free time planned. Add some so friends know when you can play.</p>
+            {% endif %}
+            <a class="btn btn-secondary panel-cta" href="{% url 'accounts:freetime_add' %}">Add free time</a>
+        </section>
+
+        <section class="panel">
+            <h2>Friends <span class="count">· {{ friend_count }}</span></h2>
+            <ul class="person-list compact">
+                {% for friend in friends %}
+                    <li class="person">
+                        <span class="avatar" aria-hidden="true">{% if friend.profile_picture %}<img src="{{ friend.profile_picture.url }}" alt="">{% else %}{{ friend.get_display_name|first }}{% endif %}</span>
+                        <span class="person-name"><a href="{% url 'accounts:profile_detail' friend.username %}">{{ friend.get_display_name }}</a></span>
+                        <a class="btn btn-secondary" href="{% url 'chat:conversation' friend.username %}">Chat</a>
+                    </li>
+                {% endfor %}
+            </ul>
+            {% if not friends %}<p class="empty">No friends yet. Players you add show up here.</p>{% endif %}
+            {% if friend_count > 5 %}<p class="panel-more"><a href="{% url 'accounts:friends' %}">See all friends &rarr;</a></p>{% endif %}
+        </section>
+    </aside>
+</div>
+
 {% else %}
-  <div class="auth-card tile">
-    <h1>Welcome to BoardWipe</h1>
-    <p class="muted">Find people to play boardgames with.</p>
-    <p><a class="btn" href="{% url 'accounts:register' %}">Register</a> <a class="btn btn-secondary" href="{% url 'accounts:login' %}">Log in</a></p>
-  </div>
+
+{# ---------------- Landing ---------------- #}
+<section class="hero">
+    <div class="hero-text">
+        <p class="eyebrow">A board game community</p>
+        <h1>Find people for your next game night.</h1>
+        <p class="lead">List the games you own, see who plays them near you, and pick a time that suits everyone.</p>
+        <div class="hero-actions">
+            <a class="btn" href="{% url 'accounts:register' %}">Create a free account</a>
+            <a class="btn btn-secondary" href="{% url 'accounts:login' %}">Log in</a>
+        </div>
+        <p class="hero-stats"><b>{{ player_count }}</b> player{{ player_count|pluralize }} · <b>{{ catalog_count }}</b> game{{ catalog_count|pluralize }} in the catalog</p>
+    </div>
+    {% include "accounts/_tile_board.html" %}
+</section>
+
+<section class="steps">
+    <article class="step tile">
+        <span class="step-no">1</span>
+        <h2>Build your shelf</h2>
+        <p>Add the games you own and the ones you know how to play.</p>
+    </article>
+    <article class="step tile">
+        <span class="step-no">2</span>
+        <h2>Find players</h2>
+        <p>Search by favorite genre or by a game someone owns.</p>
+    </article>
+    <article class="step tile">
+        <span class="step-no">3</span>
+        <h2>Plan the night</h2>
+        <p>Share your free time, add friends and chat to set it up.</p>
+    </article>
+</section>
+
 {% endif %}
 {% endblock %}

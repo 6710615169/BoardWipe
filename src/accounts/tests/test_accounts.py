@@ -410,6 +410,21 @@ class HomeViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "accounts/home.html")
 
+    def test_dashboard_shows_requests_games_and_suggestions(self):
+        me = User.objects.create_user("dash", password="x", favorite_genre="party")
+        fan = User.objects.create_user("fan", password="x", favorite_genre="party")
+        User.objects.create_user("other", password="x", favorite_genre="strategy")
+        FriendRequest.objects.create(from_user=fan, to_user=me)
+        ProfileBoardgame.objects.create(user=me, name="Codenames")
+        self.client.force_login(me)
+
+        response = self.client.get(reverse("accounts:home"))
+
+        self.assertContains(response, "wants to be your friend")
+        self.assertContains(response, "Codenames")
+        self.assertEqual(list(response.context["suggested_players"]), [])
+        self.assertNotContains(response, "@other")
+
 
 class NavigationTest(TestCase):
     def test_nav_marks_current_page_and_offers_log_out(self):

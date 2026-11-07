@@ -14,6 +14,7 @@ import os
 import secrets
 from pathlib import Path
 
+import dj_database_url
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -33,9 +34,19 @@ load_dotenv(BASE_DIR.parent / ".env")
 SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_urlsafe(50)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Off unless DEBUG=True is set, e.g. in your local .env.
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = []
+# Render sets RENDER=true on its servers; production-only settings key off it.
+ON_RENDER = os.environ.get("RENDER", "").lower() == "true"
+
+# Comma-separated, e.g. ALLOWED_HOSTS=.onrender.com on Render.
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+# Needed for HTTPS form posts, e.g. CSRF_TRUSTED_ORIGINS=https://*.onrender.com
+CSRF_TRUSTED_ORIGINS = [
+    origin for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if origin
+]
 
 
 # Application definition
@@ -60,6 +71,8 @@ LOGIN_REDIRECT_URL = "accounts:profile"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # Serves static files when DEBUG is off; must come right after Security.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -91,11 +104,13 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# PostgreSQL on Render via DATABASE_URL; SQLite locally when it is not set.
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 
@@ -137,8 +152,30 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"  # filled by collectstatic in build.sh
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+# Render's disk is wiped on every deploy, restart and idle sleep, so uploads go
+# to Cloudinary when CLOUDINARY_URL is set. Locally they stay in MEDIA_ROOT.
+# The hashed (Manifest) static storage needs collectstatic to have run, so it
+# is used on Render only; local runs and tests use the plain storage.
+STORAGES = {
+    "default": {
+        "BACKEND": (
+            "cloudinary_storage.storage.MediaCloudinaryStorage"
+            if os.environ.get("CLOUDINARY_URL")
+            else "django.core.files.storage.FileSystemStorage"
+        ),
+    },
+    "staticfiles": {
+        "BACKEND": (
+            "whitenoise.storage.CompressedManifestStaticFilesStorage"
+            if ON_RENDER
+            else "django.contrib.staticfiles.storage.StaticFilesStorage"
+        ),
+    },
+}
 
 # Email notifications
 # Set EMAIL_HOST_USER and EMAIL_HOST_PASSWORD (a Gmail app password) in the
@@ -184,3 +221,20 @@ LOGGING = {
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Clickjacking: never allow this site inside a frame.
+X_FRAME_OPTIONS = "DENY"
+
+# Production hardening (CN331 week 13). Keyed on Render rather than on DEBUG,
+# because CI also runs with DEBUG off and the HTTPS redirect would turn every
+# test request into a 301.
+if ON_RENDER:
+    SECURE_SSL_REDIRECT = True
+    # Render terminates HTTPS and forwards plain HTTP with this header.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True

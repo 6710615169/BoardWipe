@@ -64,7 +64,8 @@
         </section>
 
         <section class="panel">
-            <h2>Players you might like</h2>
+            <h2>{% if user.favorite_genre %}Players who also like {{ user.get_favorite_genre_display }}{% else %}New players{% endif %}</h2>
+            {% if not user.favorite_genre %}<p class="section-hint panel-hint">Set a favorite genre on <a href="{% url 'accounts:profile_editing' %}">your profile</a> to see players who share it.</p>{% endif %}
             <ul class="person-list">
                 {% for person in suggested_players %}
                     <li class="person">

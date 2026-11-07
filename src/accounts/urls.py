@@ -29,6 +29,11 @@ urlpatterns = [
         name="decline_friend_request",
     ),
     path(
+        "profile/friends/cancel/<str:username>/",
+        views.cancel_friend_request,
+        name="cancel_friend_request",
+    ),
+    path(
         "profile/friends/remove/<str:username>/",
         views.remove_friend,
         name="remove_friend",

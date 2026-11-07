@@ -253,8 +253,22 @@ def profile_detail_view(request, username):
         is_active=True,
     )
 
+    # Decides which friend button the page shows.
+    me = request.user
+    if me == profile_user:
+        friend_status = "self"
+    elif me.friends.filter(pk=profile_user.pk).exists():
+        friend_status = "friend"
+    elif FriendRequest.objects.filter(from_user=me, to_user=profile_user).exists():
+        friend_status = "sent"
+    elif FriendRequest.objects.filter(from_user=profile_user, to_user=me).exists():
+        friend_status = "received"
+    else:
+        friend_status = "none"
+
     context = {
         "profile_user": profile_user,
+        "friend_status": friend_status,
         "profile_boardgames": profile_user.profile_boardgames.select_related(
             "boardgame"
         ),
@@ -413,6 +427,25 @@ def decline_friend_request(request, username):
 
     friend_request.delete()
     messages.success(request, "Friend request declined.")
+
+    return redirect("accounts:friends")
+
+
+@login_required
+@require_POST
+def cancel_friend_request(request, username):
+    """Withdraw a friend request the user sent that is still pending."""
+    friend_request = get_object_or_404(
+        FriendRequest,
+        from_user=request.user,
+        to_user__username=username,
+    )
+
+    friend_request.delete()
+    messages.success(
+        request,
+        f"Friend request to {friend_request.to_user.get_display_name()} cancelled.",
+    )
 
     return redirect("accounts:friends")
 

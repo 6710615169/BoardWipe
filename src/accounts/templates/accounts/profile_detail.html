@@ -19,10 +19,30 @@
       <h1>{{ profile_user.get_display_name }}</h1>
       <p class="handle">@{{ profile_user.username }}</p>
     </div>
-    <form method="POST" action="{% url 'accounts:send_friend_request' profile_user.username %}">
-      {% csrf_token %}
-      <button type="submit">Send friend request</button>
-    </form>
+    <div class="profile-actions">
+      {% if friend_status == "self" %}
+        <a class="btn btn-secondary" href="{% url 'accounts:profile_editing' %}">Edit profile</a>
+      {% elif friend_status == "friend" %}
+        <span class="badge owned">&#10003; Friends</span>
+        <a class="btn" href="{% url 'chat:conversation' profile_user.username %}">Chat</a>
+      {% elif friend_status == "sent" %}
+        <span class="badge pending">Request sent</span>
+        <form method="post" action="{% url 'accounts:cancel_friend_request' profile_user.username %}">
+          {% csrf_token %}<button type="submit" class="btn-secondary">Cancel request</button>
+        </form>
+      {% elif friend_status == "received" %}
+        <form method="post" action="{% url 'accounts:accept_friend_request' profile_user.username %}">
+          {% csrf_token %}<button type="submit">Accept friend request</button>
+        </form>
+        <form method="post" action="{% url 'accounts:decline_friend_request' profile_user.username %}">
+          {% csrf_token %}<button type="submit" class="btn-secondary">Decline</button>
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'accounts:send_friend_request' profile_user.username %}">
+          {% csrf_token %}<button type="submit">Send friend request</button>
+        </form>
+      {% endif %}
+    </div>
   </header>
 
   <div class="profile-body">

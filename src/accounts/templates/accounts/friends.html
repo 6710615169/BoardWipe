@@ -46,7 +46,8 @@
                 </span>
                 <span class="person-actions">
                     <a class="btn btn-secondary" href="{% url 'chat:conversation' friend.username %}">Chat</a>
-                    <form method="post" action="{% url 'accounts:remove_friend' friend.username %}">
+                    <form method="post" action="{% url 'accounts:remove_friend' friend.username %}"
+                          onsubmit="return confirm('Remove {{ friend.get_display_name|escapejs }} from your friends?');">
                         {% csrf_token %}<button type="submit" class="btn-remove">Remove</button>
                     </form>
                 </span>
@@ -68,7 +69,12 @@
                     <a href="{% url 'accounts:profile_detail' person.username %}">{{ person.get_display_name }}</a>
                     <small>@{{ person.username }}</small>
                 </span>
-                <span class="badge pending">Pending</span>
+                <span class="person-actions">
+                    <span class="badge pending">Pending</span>
+                    <form method="post" action="{% url 'accounts:cancel_friend_request' person.username %}">
+                        {% csrf_token %}<button type="submit" class="btn-secondary">Cancel request</button>
+                    </form>
+                </span>
             </li>
             {% endwith %}
         {% endfor %}

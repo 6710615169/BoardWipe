@@ -479,3 +479,23 @@ class FriendTest(TestCase):
 
         self.client.post(reverse("accounts:remove_friend", args=["bob"]))
         self.assertFalse(self.bob.friends.filter(pk=self.alice.pk).exists())
+
+    def test_cancel_sent_request(self):
+        self.client.post(reverse("accounts:send_friend_request", args=["bob"]))
+        self.client.post(reverse("accounts:cancel_friend_request", args=["bob"]))
+        self.assertFalse(FriendRequest.objects.exists())
+
+    def test_profile_hides_send_button_once_connected(self):
+        url = reverse("accounts:profile_detail", args=["bob"])
+        self.assertContains(self.client.get(url), "Send friend request")
+
+        self.client.post(reverse("accounts:send_friend_request", args=["bob"]))
+        response = self.client.get(url)
+        self.assertNotContains(response, "Send friend request")
+        self.assertContains(response, "Cancel request")
+
+        self.alice.friends.add(self.bob)
+        FriendRequest.objects.all().delete()
+        response = self.client.get(url)
+        self.assertNotContains(response, "Send friend request")
+        self.assertContains(response, reverse("chat:conversation", args=["bob"]))

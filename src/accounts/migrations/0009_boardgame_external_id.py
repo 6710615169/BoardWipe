@@ -6,32 +6,48 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0008_boardgame_catalog'),
+        ("accounts", "0008_boardgame_catalog"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='boardgame',
-            name='bgg_id',
+            model_name="boardgame",
+            name="bgg_id",
         ),
         migrations.AddField(
-            model_name='boardgame',
-            name='external_id',
-            field=models.CharField(blank=True, help_text='Wikidata id (e.g. Q17271), for imported games.', max_length=64, null=True, unique=True),
+            model_name="boardgame",
+            name="external_id",
+            field=models.CharField(
+                blank=True,
+                help_text="Wikidata id (e.g. Q17271), for imported games.",
+                max_length=64,
+                null=True,
+                unique=True,
+            ),
         ),
         migrations.AlterField(
-            model_name='boardgame',
-            name='cover_url',
-            field=models.URLField(blank=True, help_text='Cover image URL, for imported games.', max_length=500),
+            model_name="boardgame",
+            name="cover_url",
+            field=models.URLField(
+                blank=True,
+                help_text="Cover image URL, for imported games.",
+                max_length=500,
+            ),
         ),
         migrations.AlterField(
-            model_name='boardgame',
-            name='fetched_at',
-            field=models.DateTimeField(blank=True, help_text='Last refreshed from Wikidata.', null=True),
+            model_name="boardgame",
+            name="fetched_at",
+            field=models.DateTimeField(
+                blank=True, help_text="Last refreshed from Wikidata.", null=True
+            ),
         ),
         migrations.AlterField(
-            model_name='boardgame',
-            name='rating',
-            field=models.FloatField(blank=True, help_text='Rating out of 10. Wikidata has no ratings, so imported games leave it empty.', null=True),
+            model_name="boardgame",
+            name="rating",
+            field=models.FloatField(
+                blank=True,
+                help_text="Rating out of 10. Wikidata has no ratings, so imported games leave it empty.",
+                null=True,
+            ),
         ),
     ]

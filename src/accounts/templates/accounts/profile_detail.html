@@ -22,6 +22,6 @@
 {% else %}
   <p>No games added yet.</p>
 {% endif %}
-
+{% include "accounts/_freetime_calendar.html" %}
 <a href="{% url 'accounts:profile_search' %}" class="btn">Back to search</a>
 {% endblock %}

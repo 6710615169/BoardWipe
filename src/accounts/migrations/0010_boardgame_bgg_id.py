@@ -6,26 +6,35 @@ from django.db import migrations, models
 def refetch_imported_games(apps, schema_editor):
     # Imported games predate bgg_id; clearing fetched_at makes the next
     # Wikidata lookup refresh them instead of treating them as fresh.
-    Boardgame = apps.get_model('accounts', 'Boardgame')
+    Boardgame = apps.get_model("accounts", "Boardgame")
     Boardgame.objects.filter(external_id__isnull=False).update(fetched_at=None)
 
 
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0009_boardgame_external_id'),
+        ("accounts", "0009_boardgame_external_id"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='boardgame',
-            name='bgg_id',
-            field=models.PositiveIntegerField(blank=True, db_index=True, help_text='BoardGameGeek id from Wikidata, used to look up the rating.', null=True),
+            model_name="boardgame",
+            name="bgg_id",
+            field=models.PositiveIntegerField(
+                blank=True,
+                db_index=True,
+                help_text="BoardGameGeek id from Wikidata, used to look up the rating.",
+                null=True,
+            ),
         ),
         migrations.AlterField(
-            model_name='boardgame',
-            name='rating',
-            field=models.FloatField(blank=True, help_text='BoardGameGeek rating out of 10 (2019 snapshot, via Oanor).', null=True),
+            model_name="boardgame",
+            name="rating",
+            field=models.FloatField(
+                blank=True,
+                help_text="BoardGameGeek rating out of 10 (2019 snapshot, via Oanor).",
+                null=True,
+            ),
         ),
         migrations.RunPython(refetch_imported_games, migrations.RunPython.noop),
     ]

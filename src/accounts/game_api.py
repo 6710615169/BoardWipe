@@ -12,6 +12,7 @@ Wikidata has no ratings, so imported games have rating=None. Games fetched are
 copied into the local Boardgame catalog, so filtering and sorting run as normal
 database queries. Wikimedia asks API clients to send a descriptive User-Agent.
 """
+
 import json
 import logging
 import urllib.error
@@ -27,13 +28,13 @@ from .models import Boardgame
 
 logger = logging.getLogger(__name__)
 
-SEARCH_URL = 'https://www.wikidata.org/w/api.php'
-SPARQL_URL = 'https://query.wikidata.org/sparql'
-USER_AGENT = 'BoardWipe/1.0 (https://github.com/6710615169/BoardWipe)'
+SEARCH_URL = "https://www.wikidata.org/w/api.php"
+SPARQL_URL = "https://query.wikidata.org/sparql"
+USER_AGENT = "BoardWipe/1.0 (https://github.com/6710615169/BoardWipe)"
 TIMEOUT_SECONDS = 15
 
-BOARD_GAME = 'Q131436'
-CARD_GAME = 'Q142714'
+BOARD_GAME = "Q131436"
+CARD_GAME = "Q142714"
 SEARCH_LIMIT = 20
 POPULAR_LIMIT = 60
 # Ids per SPARQL details query, to keep the query string short.
@@ -44,24 +45,24 @@ REFRESH_AFTER = timedelta(days=7)
 # After a failed request, skip Wikidata for this long so an outage does not
 # slow down every page view.
 RETRY_AFTER_SECONDS = 5 * 60
-FAILED_KEY = 'wikidata:failed'
+FAILED_KEY = "wikidata:failed"
 COVER_WIDTH = 400
 
 # Keyword in an English type/genre/mechanic label -> User.GENRE_CHOICES key.
 GENRE_KEYWORDS = [
-    ('card game', 'card_game'),
-    ('strategy', 'strategy'),
-    ('german-style', 'strategy'),
-    ('eurogame', 'strategy'),
-    ('worker placement', 'strategy'),
-    ('party', 'party'),
-    ('cooperative', 'cooperative'),
-    ('co-operative', 'cooperative'),
-    ('family', 'family'),
-    ("children's", 'family'),
-    ('wargame', 'war_game'),
-    ('war game', 'war_game'),
-    ('role-playing', 'rpg'),
+    ("card game", "card_game"),
+    ("strategy", "strategy"),
+    ("german-style", "strategy"),
+    ("eurogame", "strategy"),
+    ("worker placement", "strategy"),
+    ("party", "party"),
+    ("cooperative", "cooperative"),
+    ("co-operative", "cooperative"),
+    ("family", "family"),
+    ("children's", "family"),
+    ("wargame", "war_game"),
+    ("war game", "war_game"),
+    ("role-playing", "rpg"),
 ]
 
 DETAILS_QUERY = """
@@ -94,34 +95,37 @@ class GameAPIError(Exception):
 
 
 def is_enabled():
-    return bool(getattr(settings, 'GAME_API_ENABLED', False))
+    return bool(getattr(settings, "GAME_API_ENABLED", False))
 
 
 def _get_json(url, params):
     if cache.get(FAILED_KEY):
-        raise GameAPIError('Wikidata failed recently; not retrying yet')
-    request = urllib.request.Request(url + '?' + urllib.parse.urlencode(params), headers={
-        'Accept': 'application/json, application/sparql-results+json',
-        'User-Agent': USER_AGENT,
-    })
+        raise GameAPIError("Wikidata failed recently; not retrying yet")
+    request = urllib.request.Request(
+        url + "?" + urllib.parse.urlencode(params),
+        headers={
+            "Accept": "application/json, application/sparql-results+json",
+            "User-Agent": USER_AGENT,
+        },
+    )
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
             return json.loads(response.read())
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
         cache.set(FAILED_KEY, True, RETRY_AFTER_SECONDS)
-        raise GameAPIError(f'Wikidata request failed: {exc}') from exc
+        raise GameAPIError(f"Wikidata request failed: {exc}") from exc
 
 
 def _sparql(query):
-    data = _get_json(SPARQL_URL, {'query': query, 'format': 'json'})
+    data = _get_json(SPARQL_URL, {"query": query, "format": "json"})
     try:
-        return data['results']['bindings']
+        return data["results"]["bindings"]
     except (KeyError, TypeError) as exc:
-        raise GameAPIError('Wikidata sent an unexpected SPARQL response') from exc
+        raise GameAPIError("Wikidata sent an unexpected SPARQL response") from exc
 
 
 def _qid(uri):
-    return uri.rsplit('/', 1)[-1]
+    return uri.rsplit("/", 1)[-1]
 
 
 def _int_or_none(text):
@@ -135,9 +139,9 @@ def _int_or_none(text):
 def cover_url(commons_url):
     """Turn a P18 Commons file URL into a resized https image URL."""
     if not commons_url:
-        return ''
-    url = commons_url.replace('http://', 'https://', 1)
-    return f'{url}?width={COVER_WIDTH}'
+        return ""
+    url = commons_url.replace("http://", "https://", 1)
+    return f"{url}?width={COVER_WIDTH}"
 
 
 def genres_from_labels(labels):
@@ -147,84 +151,103 @@ def genres_from_labels(labels):
         for keyword, genre in GENRE_KEYWORDS:
             if keyword in label:
                 genres.add(genre)
-    return sorted(genres) or ['other']
+    return sorted(genres) or ["other"]
 
 
 def parse_details(bindings):
     """Boardgame field values for each base game in a DETAILS_QUERY result."""
     games = []
     for row in bindings:
-        def value(key):
-            return (row.get(key) or {}).get('value')
 
-        external_id = _qid(value('game') or '')
-        name = ' '.join((value('label') or '').split())
-        types = [label for label in (value('types') or '').split('|') if label]
+        def value(key):
+            return (row.get(key) or {}).get("value")
+
+        external_id = _qid(value("game") or "")
+        name = " ".join((value("label") or "").split())
+        types = [label for label in (value("types") or "").split("|") if label]
         if not external_id or not name:
             continue
         # Expansions need the base game, so they are not offered on their own.
-        if any('expansion' in label.casefold() for label in types):
+        if any("expansion" in label.casefold() for label in types):
             continue
-        min_players, max_players = _int_or_none(value('min')), _int_or_none(value('max'))
+        min_players, max_players = _int_or_none(value("min")), _int_or_none(
+            value("max")
+        )
         if min_players and max_players and min_players > max_players:
             min_players, max_players = max_players, min_players
-        games.append({
-            'external_id': external_id,
-            'name': name[:Boardgame._meta.get_field('name').max_length],
-            'cover_url': cover_url(value('image'))[:Boardgame._meta.get_field('cover_url').max_length],
-            'min_players': min_players,
-            'max_players': max_players,
-            'genres': genres_from_labels(types),
-        })
+        games.append(
+            {
+                "external_id": external_id,
+                "name": name[: Boardgame._meta.get_field("name").max_length],
+                "cover_url": cover_url(value("image"))[
+                    : Boardgame._meta.get_field("cover_url").max_length
+                ],
+                "min_players": min_players,
+                "max_players": max_players,
+                "genres": genres_from_labels(types),
+            }
+        )
     return games
 
 
 def search_ids(query):
     """Wikidata ids of board/card games matching query, best first (cached)."""
-    key = 'wikidata:search:' + urllib.parse.quote(query.casefold())[:200]
+    key = "wikidata:search:" + urllib.parse.quote(query.casefold())[:200]
     ids = cache.get(key)
     if ids is None:
-        data = _get_json(SEARCH_URL, {
-            'action': 'query', 'list': 'search', 'format': 'json',
-            'srsearch': f'{query} haswbstatement:P31={BOARD_GAME}|P31={CARD_GAME}',
-            'srlimit': SEARCH_LIMIT, 'srprop': '',
-        })
+        data = _get_json(
+            SEARCH_URL,
+            {
+                "action": "query",
+                "list": "search",
+                "format": "json",
+                "srsearch": f"{query} haswbstatement:P31={BOARD_GAME}|P31={CARD_GAME}",
+                "srlimit": SEARCH_LIMIT,
+                "srprop": "",
+            },
+        )
         try:
-            hits = data['query']['search']
+            hits = data["query"]["search"]
         except (KeyError, TypeError) as exc:
-            raise GameAPIError('Wikidata sent an unexpected search response') from exc
-        ids = [hit['title'] for hit in hits if str(hit.get('title', '')).startswith('Q')]
+            raise GameAPIError("Wikidata sent an unexpected search response") from exc
+        ids = [
+            hit["title"] for hit in hits if str(hit.get("title", "")).startswith("Q")
+        ]
         cache.set(key, ids, CACHE_SECONDS)
     return ids
 
 
 def popular_ids(limit=POPULAR_LIMIT):
     """Wikidata ids of the most widely covered board games (cached)."""
-    key = f'wikidata:popular:{limit}'
+    key = f"wikidata:popular:{limit}"
     ids = cache.get(key)
     if ids is None:
-        ids = [_qid(row['game']['value']) for row in _sparql(POPULAR_QUERY % (BOARD_GAME, limit))]
+        ids = [
+            _qid(row["game"]["value"])
+            for row in _sparql(POPULAR_QUERY % (BOARD_GAME, limit))
+        ]
         cache.set(key, ids, CACHE_SECONDS)
     return ids
 
 
 def sync_games(ids):
-    """Fetch details for ids missing from, or stale in, the local catalog and save them."""
+    """Fetch and save details for ids missing from, or stale in, the catalog."""
     fresh_since = timezone.now() - REFRESH_AFTER
     fresh = set(
-        Boardgame.objects.filter(external_id__in=ids, fetched_at__gte=fresh_since)
-        .values_list('external_id', flat=True)
+        Boardgame.objects.filter(
+            external_id__in=ids, fetched_at__gte=fresh_since
+        ).values_list("external_id", flat=True)
     )
     to_fetch = [qid for qid in dict.fromkeys(ids) if qid not in fresh]
 
     for start in range(0, len(to_fetch), DETAILS_BATCH_SIZE):
-        batch = to_fetch[start:start + DETAILS_BATCH_SIZE]
-        query = DETAILS_QUERY % ' '.join(f'wd:{qid}' for qid in batch)
+        batch = to_fetch[start : start + DETAILS_BATCH_SIZE]
+        query = DETAILS_QUERY % " ".join(f"wd:{qid}" for qid in batch)
         for data in parse_details(_sparql(query)):
-            data['genres'] = Boardgame.format_genres(data['genres'])
+            data["genres"] = Boardgame.format_genres(data["genres"])
             Boardgame.objects.update_or_create(
-                external_id=data.pop('external_id'),
-                defaults={**data, 'fetched_at': timezone.now()},
+                external_id=data.pop("external_id"),
+                defaults={**data, "fetched_at": timezone.now()},
             )
 
 

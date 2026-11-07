@@ -1,0 +1,14 @@
+{% autoescape off %}Hi {{ recipient.get_display_name }},
+
+{{ sender_name }} sent you a message on BoardWipe:
+
+"{{ preview }}"
+
+Read it and reply here:
+{{ chat_url }}
+
+(You'll be asked to log in first if you aren't already.)
+
+--
+You get this email because message notifications are on. To turn them off, change your settings: {{ settings_url }}
+{% endautoescape %}

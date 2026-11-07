@@ -6,17 +6,21 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0010_boardgame_bgg_id'),
+        ("accounts", "0010_boardgame_bgg_id"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='boardgame',
-            name='bgg_id',
+            model_name="boardgame",
+            name="bgg_id",
         ),
         migrations.AlterField(
-            model_name='boardgame',
-            name='rating',
-            field=models.FloatField(blank=True, help_text='Rating out of 10. Wikidata has no ratings, so imported games leave it empty.', null=True),
+            model_name="boardgame",
+            name="rating",
+            field=models.FloatField(
+                blank=True,
+                help_text="Rating out of 10. Wikidata has no ratings, so imported games leave it empty.",
+                null=True,
+            ),
         ),
     ]

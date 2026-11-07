@@ -9,5 +9,13 @@ admin.site.register(ProfileBoardgame)
 
 @admin.register(Boardgame)
 class BoardgameAdmin(admin.ModelAdmin):
-    list_display = ('name', 'rating', 'min_players', 'max_players', 'genres', 'external_id', 'created_by')
-    search_fields = ('name',)
+    list_display = (
+        "name",
+        "rating",
+        "min_players",
+        "max_players",
+        "genres",
+        "external_id",
+        "created_by",
+    )
+    search_fields = ("name",)

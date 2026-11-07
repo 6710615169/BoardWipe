@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import F
 from django.db.models.functions import Lower
 
-from .models import Boardgame, ProfileBoardgame, User
+from .models import Boardgame, FreeTime, ProfileBoardgame, User
 
 
 def validate_email_is_unused(email, exclude_pk=None):
@@ -23,7 +23,7 @@ def validate_email_is_unused(email, exclude_pk=None):
     if exclude_pk is not None:
         clash = clash.exclude(pk=exclude_pk)
     if clash.exists():
-        raise forms.ValidationError('A user with that email already exists.')
+        raise forms.ValidationError("A user with that email already exists.")
     return email
 
 
@@ -34,10 +34,10 @@ class RegisterForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ['username', 'email', 'password1', 'password2']
+        fields = ["username", "email", "password1", "password2"]
 
     def clean_email(self):
-        return validate_email_is_unused(self.cleaned_data.get('email', ''))
+        return validate_email_is_unused(self.cleaned_data.get("email", ""))
 
 
 class ProfileForm(forms.ModelForm):
@@ -46,17 +46,17 @@ class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
         fields = [
-            'display_name',
-            'first_name',
-            'last_name',
-            'email',
-            'favorite_boardgame',
-            'favorite_genre',
-            'bio',
-            'profile_picture',
+            "display_name",
+            "first_name",
+            "last_name",
+            "email",
+            "favorite_boardgame",
+            "favorite_genre",
+            "bio",
+            "profile_picture",
         ]
         widgets = {
-            'bio': forms.Textarea(attrs={'rows': 4}),
+            "bio": forms.Textarea(attrs={"rows": 4}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -64,7 +64,9 @@ class ProfileForm(forms.ModelForm):
         # Remember the stored picture now: by the time save() runs, the form
         # has already pointed the instance at the new upload (or at '' when
         # "Clear" was ticked), so the old name would be lost.
-        self._old_picture_name = self.instance.profile_picture.name if self.instance.pk else ''
+        self._old_picture_name = (
+            self.instance.profile_picture.name if self.instance.pk else ""
+        )
 
     def save(self, commit=True):
         user = super().save(commit=commit)
@@ -85,12 +87,23 @@ class ProfileForm(forms.ModelForm):
 
     def clean_email(self):
         """Blank is allowed here; the profile form does not require an email."""
-        return validate_email_is_unused(self.cleaned_data.get('email', ''), exclude_pk=self.instance.pk)
+        return validate_email_is_unused(
+            self.cleaned_data.get("email", ""), exclude_pk=self.instance.pk
+        )
+
+
+class NotificationSettingsForm(forms.ModelForm):
+    """Opt in or out of email notifications."""
+
+    class Meta:
+        model = User
+        fields = ["email_notifications"]
+        labels = {"email_notifications": "Email me about new messages and requests"}
 
 
 BOARDGAME_FLAG_LABELS = {
-    'is_known': 'I know this game',
-    'is_owned': 'I own this game',
+    "is_known": "I know this game",
+    "is_owned": "I own this game",
 }
 
 
@@ -102,34 +115,37 @@ def validate_known_or_owned(form):
     leaves out constraints on fields that already failed) and the user sees
     one message instead of the raw constraint name.
     """
-    if not form.cleaned_data.get('is_known') and not form.cleaned_data.get('is_owned'):
-        form.add_error('is_known', 'Tick at least one of "I know this game" or "I own this game".')
+    if not form.cleaned_data.get("is_known") and not form.cleaned_data.get("is_owned"):
+        form.add_error(
+            "is_known", 'Tick at least one of "I know this game" or "I own this game".'
+        )
 
 
 def normalize_game_name(name):
     """Match ProfileBoardgame.save(), so " catan " is compared as "catan"."""
-    return ' '.join(name.split())
+    return " ".join(name.split())
 
 
 class BoardgameSearchForm(forms.Form):
     """Search, filter and sort the catalog on the "Add a game" page."""
 
     SORT_CHOICES = [
-        ('rating', 'Rating: high to low'),
-        ('rating_asc', 'Rating: low to high'),
-        ('name', 'Name: A to Z'),
+        ("rating", "Rating: high to low"),
+        ("rating_asc", "Rating: low to high"),
+        ("name", "Name: A to Z"),
     ]
 
-    q = forms.CharField(required=False, max_length=100, label='Search')
-    genre = forms.ChoiceField(required=False, choices=[('', 'All genres')] + User.GENRE_CHOICES)
+    q = forms.CharField(required=False, max_length=100, label="Search")
+    genre = forms.ChoiceField(
+        required=False, choices=[("", "All genres")] + User.GENRE_CHOICES
+    )
     players = forms.ChoiceField(
         required=False,
-        choices=[('', 'Any number')] + [
-            (key, label) for key, (label, _) in Boardgame.PLAYER_FILTERS.items()
-        ],
-        label='Players',
+        choices=[("", "Any number")]
+        + [(key, label) for key, (label, _) in Boardgame.PLAYER_FILTERS.items()],
+        label="Players",
     )
-    sort = forms.ChoiceField(required=False, choices=SORT_CHOICES, label='Sort by')
+    sort = forms.ChoiceField(required=False, choices=SORT_CHOICES, label="Sort by")
 
     def filter_and_sort(self, games):
         """
@@ -138,16 +154,16 @@ class BoardgameSearchForm(forms.Form):
         also matches the ids Wikidata returned.
         """
         data = self.cleaned_data if self.is_bound and self.is_valid() else {}
-        if data.get('genre'):
-            games = games.filter(Boardgame.genre_filter(data['genre']))
-        if data.get('players'):
-            games = games.filter(Boardgame.PLAYER_FILTERS[data['players']][1])
-        sort = data.get('sort') or 'rating'
-        if sort == 'name':
-            return games.order_by(Lower('name'))
-        if sort == 'rating_asc':
-            return games.order_by(F('rating').asc(nulls_last=True), Lower('name'))
-        return games.order_by(F('rating').desc(nulls_last=True), Lower('name'))
+        if data.get("genre"):
+            games = games.filter(Boardgame.genre_filter(data["genre"]))
+        if data.get("players"):
+            games = games.filter(Boardgame.PLAYER_FILTERS[data["players"]][1])
+        sort = data.get("sort") or "rating"
+        if sort == "name":
+            return games.order_by(Lower("name"))
+        if sort == "rating_asc":
+            return games.order_by(F("rating").asc(nulls_last=True), Lower("name"))
+        return games.order_by(F("rating").desc(nulls_last=True), Lower("name"))
 
 
 class BoardgameCreateForm(forms.ModelForm):
@@ -159,52 +175,56 @@ class BoardgameCreateForm(forms.ModelForm):
     genre_choices = forms.MultipleChoiceField(
         choices=User.GENRE_CHOICES,
         widget=forms.CheckboxSelectMultiple,
-        label='Genre',
-        help_text='Pick one or more.',
-        error_messages={'required': 'Pick at least one genre.'},
+        label="Genre",
+        help_text="Pick one or more.",
+        error_messages={"required": "Pick at least one genre."},
     )
 
     class Meta:
         model = Boardgame
-        fields = ['name', 'cover', 'min_players', 'max_players']
+        fields = ["name", "cover", "min_players", "max_players"]
         labels = {
-            'name': 'Boardgame name',
-            'cover': 'Game cover',
-            'min_players': 'Minimum players',
-            'max_players': 'Maximum players',
+            "name": "Boardgame name",
+            "cover": "Game cover",
+            "min_players": "Minimum players",
+            "max_players": "Maximum players",
         }
 
     def __init__(self, *args, user, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        for name in ('cover', 'min_players', 'max_players'):
+        for name in ("cover", "min_players", "max_players"):
             self.fields[name].required = True
-        for name in ('min_players', 'max_players'):
+        for name in ("min_players", "max_players"):
             self.fields[name].widget.attrs.update(min=1, max=99)
             self.fields[name].validators.append(MinValueValidator(1))
             self.fields[name].validators.append(MaxValueValidator(99))
 
     def clean_name(self):
-        name = normalize_game_name(self.cleaned_data['name'])
+        name = normalize_game_name(self.cleaned_data["name"])
         if ProfileBoardgame.objects.filter(user=self.user, name__iexact=name).exists():
-            raise forms.ValidationError('This game is already on your profile.')
+            raise forms.ValidationError("This game is already on your profile.")
         return name
 
     def clean(self):
         cleaned_data = super().clean()
-        low, high = cleaned_data.get('min_players'), cleaned_data.get('max_players')
+        low, high = cleaned_data.get("min_players"), cleaned_data.get("max_players")
         if low and high and low > high:
-            self.add_error('max_players', 'Maximum players cannot be less than minimum players.')
+            self.add_error(
+                "max_players", "Maximum players cannot be less than minimum players."
+            )
         return cleaned_data
 
     @transaction.atomic
     def save(self):
         """Create the catalog game and add it to the user's profile as known."""
         game = super().save(commit=False)
-        game.genres = Boardgame.format_genres(self.cleaned_data['genre_choices'])
+        game.genres = Boardgame.format_genres(self.cleaned_data["genre_choices"])
         game.created_by = self.user
         game.save()
-        ProfileBoardgame.objects.create(user=self.user, name=game.name, boardgame=game, is_known=True)
+        ProfileBoardgame.objects.create(
+            user=self.user, name=game.name, boardgame=game, is_known=True
+        )
         return game
 
 
@@ -218,7 +238,7 @@ class ProfileBoardgameEditForm(forms.ModelForm):
 
     class Meta:
         model = ProfileBoardgame
-        fields = ['picture', 'is_known', 'is_owned']
+        fields = ["picture", "is_known", "is_owned"]
         labels = BOARDGAME_FLAG_LABELS
 
     def __init__(self, *args, **kwargs):
@@ -234,6 +254,30 @@ class ProfileBoardgameEditForm(forms.ModelForm):
         game = super().save(commit=commit)
         # Replacing or clearing the picture would otherwise leave the old file
         # orphaned in MEDIA_ROOT.
-        if commit and self._old_picture_name and game.picture.name != self._old_picture_name:
+        if (
+            commit
+            and self._old_picture_name
+            and game.picture.name != self._old_picture_name
+        ):
             game.picture.storage.delete(self._old_picture_name)
         return game
+
+
+class FreeTimeForm(forms.ModelForm):
+    class Meta:
+        model = FreeTime
+        fields = ["date", "start_time", "end_time"]
+        widgets = {
+            "date": forms.DateInput(
+                format="%Y-%m-%d",
+                attrs={"type": "date"},
+            ),
+            "start_time": forms.TimeInput(
+                format="%H:%M",
+                attrs={"type": "time"},
+            ),
+            "end_time": forms.TimeInput(
+                format="%H:%M",
+                attrs={"type": "time"},
+            ),
+        }

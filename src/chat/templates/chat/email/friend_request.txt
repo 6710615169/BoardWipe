@@ -1,0 +1,12 @@
+{% autoescape off %}Hi {{ recipient.get_display_name }},
+
+{{ sender_name }} sent you a friend request on BoardWipe.
+
+Accept or decline it here:
+{{ friends_url }}
+
+(You'll be asked to log in first if you aren't already.)
+
+--
+You get this email because notifications are on. To turn them off, change your settings: {{ settings_url }}
+{% endautoescape %}

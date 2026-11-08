@@ -3,12 +3,19 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
+<div class="edit-header">
+    <h1>{{ title }}</h1>
+    <a href="{% url 'accounts:profile' %}">&larr; Back to profile</a>
+</div>
 
 <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save</button>
-    <a href="{% url 'accounts:profile' %}">Cancel</a>
+    <section class="edit-section">
+        {{ form.as_p }}
+    </section>
+    <div class="form-actions">
+        <a class="btn-secondary" href="{% url 'accounts:profile' %}">Cancel</a>
+        <button type="submit">Save</button>
+    </div>
 </form>
 {% endblock %}

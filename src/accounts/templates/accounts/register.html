@@ -1,13 +1,21 @@
 {% extends "accounts/base.html" %}
 {% block title %}Register{% endblock %}
 {% block content %}
-<h1>Register</h1>
-
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Create account</button>
-</form>
-
-<p>Already have an account? <a href="{% url 'accounts:login' %}">Log in here</a></p>
+<div class="auth-split">
+  <aside class="auth-side">
+    <p class="eyebrow">Join BoardWipe</p>
+    <h2>More players, more games.</h2>
+    <p>Make a profile, list the games on your shelf and find people who want to play them.</p>
+    {% include "accounts/_tile_board.html" %}
+  </aside>
+  <div class="auth-form">
+    <h1>Create an account</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Create account</button>
+    </form>
+    <p class="switch">Already have an account? <a href="{% url 'accounts:login' %}">Log in here</a></p>
+  </div>
+</div>
 {% endblock %}

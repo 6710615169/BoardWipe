@@ -160,6 +160,7 @@ class ProfilePictureAcceptanceTest(TestCase):
 
     @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
     def test_post_with_simple_uploaded_file_returns_302_and_saves_picture(self):
+        ProfileBoardgame.objects.create(user=self.user, name="Catan")
         self.client.force_login(self.user)
 
         image = Image.new("RGB", (10, 10), color="blue")
@@ -190,6 +191,13 @@ class ProfilePictureAcceptanceTest(TestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.profile_picture.name)
         self.assertIn("profile.png", self.user.profile_picture.name)
+
+    def test_favorite_boardgame_must_be_one_of_your_games(self):
+        ProfileBoardgame.objects.create(user=self.user, name="Azul")
+        form = ProfileForm({"favorite_boardgame": "Azul"}, instance=self.user)
+        self.assertTrue(form.is_valid(), form.errors)
+        form = ProfileForm({"favorite_boardgame": "Risk"}, instance=self.user)
+        self.assertIn("favorite_boardgame", form.errors)
 
     def test_profile_form_includes_profile_picture_field(self):
         form = ProfileForm()
@@ -410,6 +418,33 @@ class HomeViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "accounts/home.html")
 
+    def test_dashboard_shows_requests_games_and_suggestions(self):
+        me = User.objects.create_user("dash", password="x", favorite_genre="party")
+        fan = User.objects.create_user("fan", password="x", favorite_genre="party")
+        User.objects.create_user("other", password="x", favorite_genre="strategy")
+        FriendRequest.objects.create(from_user=fan, to_user=me)
+        ProfileBoardgame.objects.create(user=me, name="Codenames")
+        self.client.force_login(me)
+
+        response = self.client.get(reverse("accounts:home"))
+
+        self.assertContains(response, "wants to be your friend")
+        self.assertContains(response, "Codenames")
+        self.assertEqual(list(response.context["suggested_players"]), [])
+        self.assertNotContains(response, "@other")
+
+
+class NavigationTest(TestCase):
+    def test_nav_marks_current_page_and_offers_log_out(self):
+        user = User.objects.create_user("navuser", password="pass12345")
+        self.client.force_login(user)
+        response = self.client.get(reverse("accounts:friends"))
+        self.assertContains(
+            response,
+            f'href="{reverse("accounts:friends")}" aria-current="page"',
+        )
+        self.assertContains(response, f'action="{reverse("accounts:logout")}"')
+
 
 class FriendTest(TestCase):
     def setUp(self):
@@ -452,3 +487,23 @@ class FriendTest(TestCase):
 
         self.client.post(reverse("accounts:remove_friend", args=["bob"]))
         self.assertFalse(self.bob.friends.filter(pk=self.alice.pk).exists())
+
+    def test_cancel_sent_request(self):
+        self.client.post(reverse("accounts:send_friend_request", args=["bob"]))
+        self.client.post(reverse("accounts:cancel_friend_request", args=["bob"]))
+        self.assertFalse(FriendRequest.objects.exists())
+
+    def test_profile_hides_send_button_once_connected(self):
+        url = reverse("accounts:profile_detail", args=["bob"])
+        self.assertContains(self.client.get(url), "Send friend request")
+
+        self.client.post(reverse("accounts:send_friend_request", args=["bob"]))
+        response = self.client.get(url)
+        self.assertNotContains(response, "Send friend request")
+        self.assertContains(response, "Cancel request")
+
+        self.alice.friends.add(self.bob)
+        FriendRequest.objects.all().delete()
+        response = self.client.get(url)
+        self.assertNotContains(response, "Send friend request")
+        self.assertContains(response, reverse("chat:conversation", args=["bob"]))

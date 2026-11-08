@@ -13,7 +13,9 @@ class MessageForm(forms.ModelForm):
         help_texts = {"body": "Type @ to tag a boardgame from either profile."}
         error_messages = {"body": {"required": "Write a message."}}
         widgets = {
-            "body": forms.Textarea(attrs={"rows": 2}),
+            "body": forms.Textarea(
+                attrs={"rows": 1, "placeholder": "Write a message..."}
+            ),
         }
 
     def __init__(self, *args, sender, recipient, **kwargs):
